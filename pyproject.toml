@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "ai-source-citation"
+version = "0.1.0"
+description = "Check expected citations appear in AI search answers."
+authors = ["Steve Gibbard"]
+readme = "README.md"
+packages = [{ include = "ai_source_citation", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+playwright = "^1.46.0"
+beautifulsoup4 = "^4.12.3"
+lxml = "^5.2.2"
+pydantic = "^2.8.2"
+pandas = "^2.2.2"
+typer = "^0.12.3"
+rich = "^13.7.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.2"
+ruff = "^0.6.2"
+mypy = "^1.11.1"
+
+[tool.poetry.scripts]
+ai-source-citation = "ai_source_citation.cli:main"
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
