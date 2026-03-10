@@ -96,7 +96,7 @@ Example:
 
 ```bash
 poetry run ai-source-citation check \
-  "what time is the population in the uk?" \
+  "what is the population in the uk in 2026?" \
   --expected ons.org.uk \ 
   --no-headless \
   --profile .pw-profile \
@@ -121,7 +121,7 @@ Example:
 
 ```bash
 poetry run ai-source-citation check \
-  "what time is the population in the uk?" \      
+  "what is the population in the uk in 2026?" \      
   --expected ons.org.uk \
   --no-headless \
   --profile .pw-profile
@@ -136,10 +136,6 @@ This is useful for:
 ### Run the Tool (Headless Mode)
 
 Headless mode runs the full analysis without opening a browser window.
-
-```bash
-poetry run source-checker run-headless "your search query"
-```
 
 Example:
 
