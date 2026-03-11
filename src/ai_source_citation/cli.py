@@ -196,6 +196,22 @@ def _print_rich_table(df) -> None:
     console.print(table)
 
 
+def _row_to_json_record(row) -> dict[str, object]:
+    return {
+        "provider": row.provider,
+        "question": row.question,
+        "expected_sources": list(row.expected_sources),
+        "expected_answer": row.expected_answer,
+        "answer_text": row.answer_text,
+        "answer_matched": row.answer_matched,
+        "citations": list(row.citations),
+        "citation_domains": list(row.citation_domains),
+        "citation_labels": list(row.citation_labels),
+        "matched": row.matched,
+        "matched_sources": list(row.matched_sources),
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ai-source-citation")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -289,7 +305,7 @@ def main(argv: list[str] | None = None) -> int:
             console.print(f"[green]Wrote CSV:[/green] {args.csv}")
 
         if args.json_path:
-            records = df.to_dict(orient="records")
+            records = [_row_to_json_record(row) for row in rows]
             args.json_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
             console.print(f"[green]Wrote JSON:[/green] {args.json_path}")
 
@@ -317,7 +333,7 @@ def main(argv: list[str] | None = None) -> int:
             console.print(f"[green]Wrote CSV:[/green] {args.csv}")
 
         if args.json_path:
-            records = df.to_dict(orient="records")
+            records = [_row_to_json_record(row) for row in rows]
             args.json_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
             console.print(f"[green]Wrote JSON:[/green] {args.json_path}")
 
