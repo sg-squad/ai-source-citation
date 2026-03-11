@@ -146,6 +146,24 @@ class GoogleAiOverviewProvider(SearchProvider):
             except Exception:
                 continue
 
+    async def _open_ai_overview_sources(self, page: Page) -> None:
+        candidates = [
+            page.locator("div[role='button'][aria-label='Show all related links']"),
+            page.locator("div.BjvG9b[role='button']"),
+            page.locator("text=Show all"),
+        ]
+
+        for locator in candidates:
+            try:
+                if await locator.count() > 0:
+                    first = locator.first
+                    if await first.is_visible():
+                        await first.click(timeout=2_000)
+                        await page.wait_for_timeout(1_000)
+                        return
+            except Exception:
+                continue
+
     async def fetch(self, question: str) -> AiAnswer:
         url = (
             "https://www.google.com/search"
@@ -217,6 +235,8 @@ class GoogleAiOverviewProvider(SearchProvider):
             if self._expand_answer:
                 await self._expand_ai_overview_answer(page)
                 await asyncio.sleep(0.5)
+                await self._open_ai_overview_sources(page)
+                await asyncio.sleep(0.5)
 
             html = await page.content()
 
@@ -284,6 +304,37 @@ async def _best_effort_accept_consent(page: Page) -> None:
         except Exception:
             continue
 
+async def _extract_ai_overview_source_panel(
+    page: Page,
+) -> tuple[list[str], list[str]]:
+    urls: list[str] = []
+    labels: list[str] = []
+
+    source_items = page.locator("ul.bTFeG li.CyMdWb")
+
+    try:
+        count = await source_items.count()
+        for i in range(min(count, 50)):
+            item = source_items.nth(i)
+
+            href = await item.locator("a.NDNGvf").first.get_attribute("href")
+            cleaned = _clean_google_href(href or "")
+            if cleaned:
+                domain = _normalize_domain(cleaned)
+                if domain not in {"google.com", "www.google.com"}:
+                    urls.append(cleaned)
+
+            try:
+                label_text = (await item.locator(".R0r5R").first.inner_text()).strip()
+                if label_text:
+                    labels.append(label_text)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    return _dedupe_keep_order(urls), _dedupe_keep_order(labels)
+
 
 async def _extract_ai_overview_from_dom(
     page: Page,
@@ -324,7 +375,9 @@ async def _extract_ai_overview_from_dom(
     if not answer_text:
         return None, [], tuple(), debug
 
-    # Visible inline source links inside AI Overview
+    panel_urls, panel_labels = await _extract_ai_overview_source_panel(page)
+
+    # Fallback: visible inline source links inside AI Overview
     visible_urls: list[str] = []
     try:
         links = module.locator("a[href]")
@@ -339,7 +392,7 @@ async def _extract_ai_overview_from_dom(
     except Exception:
         pass
 
-    # Citation chip labels
+    # Fallback: citation chip labels
     chip_labels: list[str] = []
     try:
         chip_buttons = module.locator("button[aria-label*='View related links']")
@@ -352,16 +405,17 @@ async def _extract_ai_overview_from_dom(
     except Exception:
         pass
 
-    # Hidden structured source URLs from comment payloads
     hidden_urls = _extract_urls_from_comments(html)
 
-    all_urls = _dedupe_keep_order(visible_urls + hidden_urls)
-    chip_labels = _dedupe_keep_order(chip_labels)
+    all_urls = panel_urls or _dedupe_keep_order(visible_urls + hidden_urls)
+    chip_labels = panel_labels or _dedupe_keep_order(chip_labels)
 
+    debug["panel_url_count"] = str(len(panel_urls))
+    debug["panel_label_count"] = str(len(panel_labels))
     debug["visible_url_count"] = str(len(visible_urls))
     debug["hidden_url_count"] = str(len(hidden_urls))
     debug["chip_names"] = ", ".join(chip_labels)
-
+    
     if len(answer_text) > 12000:
         debug["dom_ai_overview_rejected"] = "module too large"
         return None, [], tuple(chip_labels), debug
