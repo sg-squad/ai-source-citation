@@ -14,13 +14,13 @@ def normalize_expected_source(s: str) -> str:
     s = s.strip().lower()
     s = s.removeprefix("http://").removeprefix("https://")
     s = s.split("/")[0]
-    s = s.lstrip("www.")
+    s = s.removeprefix("www.")
     return s
 
 
 def domain_matches(expected: str, actual_domain: str, policy: DomainMatchPolicy) -> bool:
     e = normalize_expected_source(expected)
-    a = actual_domain.lower().lstrip("www.") if policy.case_insensitive else actual_domain.lstrip("www.")
+    a = actual_domain.lower().removeprefix("www.") if policy.case_insensitive else actual_domain.removeprefix("www.")
     if policy.suffix_match:
         return a == e or a.endswith("." + e)
     return a == e

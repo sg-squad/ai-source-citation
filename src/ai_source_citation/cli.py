@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Sequence
 
 from rich.console import Console
 from rich.table import Table
@@ -13,6 +14,12 @@ from ai_source_citation.providers.google import GoogleAiOverviewProvider
 from ai_source_citation.reporting import build_row, to_dataframe
 
 console = Console()
+
+
+@dataclass(frozen=True)
+class SearchRequest:
+    question: str
+    expected_sources: list[str]
 
 
 def _parse_expected(values: Iterable[str]) -> List[str]:
@@ -27,33 +34,115 @@ def _parse_expected(values: Iterable[str]) -> List[str]:
         parts = [p.strip() for p in v.split(",")]
         out.extend([p for p in parts if p])
 
-    # dedupe, keep order
+    return _dedupe_preserve_order(out)
+
+
+def _dedupe_preserve_order(values: Iterable[str]) -> list[str]:
     seen: set[str] = set()
-    deduped: list[str] = []
-    for x in out:
-        if x not in seen:
-            seen.add(x)
-            deduped.append(x)
-    return deduped
+    result: list[str] = []
+    for value in values:
+        if value not in seen:
+            seen.add(value)
+            result.append(value)
+    return result
 
 
-async def _check_async(
-    question: str,
-    expected_sources: list[str],
+def _coerce_expected_citations(value: Any, *, item_index: int) -> list[str]:
+    if isinstance(value, str):
+        expected = [value.strip()]
+    elif isinstance(value, list) and all(isinstance(v, str) for v in value):
+        expected = [v.strip() for v in value]
+    else:
+        raise ValueError(
+            f"search[{item_index}].expected_citation must be a string or list of strings"
+        )
+
+    expected = [v for v in expected if v]
+    expected = _dedupe_preserve_order(expected)
+
+    if not expected:
+        raise ValueError(
+            f"search[{item_index}].expected_citation must contain at least one non-empty value"
+        )
+
+    return expected
+
+
+def _load_search_requests(config_path: Path) -> list[SearchRequest]:
+    try:
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+    except FileNotFoundError as exc:
+        raise ValueError(f"Config file not found: {config_path}") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Invalid JSON in config file {config_path}: {exc}") from exc
+
+    if not isinstance(payload, dict):
+        raise ValueError("Config root must be a JSON object")
+
+    search_items = payload.get("search")
+    if not isinstance(search_items, list):
+        raise ValueError("Config must contain a 'search' array")
+
+    requests: list[SearchRequest] = []
+    for idx, item in enumerate(search_items):
+        if not isinstance(item, dict):
+            raise ValueError(f"search[{idx}] must be an object")
+
+        question = item.get("question")
+        if not isinstance(question, str) or not question.strip():
+            raise ValueError(f"search[{idx}].question must be a non-empty string")
+
+        if "expected_citation" not in item:
+            raise ValueError(f"search[{idx}].expected_citation is required")
+
+        expected_sources = _coerce_expected_citations(
+            item["expected_citation"],
+            item_index=idx,
+        )
+
+        requests.append(
+            SearchRequest(
+                question=question.strip(),
+                expected_sources=expected_sources,
+            )
+        )
+
+    if not requests:
+        raise ValueError("Config 'search' array must not be empty")
+
+    return requests
+
+
+async def _run_checks_async(
+    requests: Sequence[SearchRequest],
     *,
     headless: bool,
     profile: Optional[str],
     interactive: bool,
 ) -> list:
-    provider = GoogleAiOverviewProvider(headless=headless,
-                                        user_data_dir=profile,
-                                        interactive=interactive)
-    answer = await provider.fetch(question)
+    provider = GoogleAiOverviewProvider(
+        headless=headless,
+        user_data_dir=profile,
+        interactive=interactive,
+    )
 
-    print(answer.raw_debug.get("source"))
-    print(answer.raw_debug)
-    row = build_row(answer, expected_sources=expected_sources)
-    return [row]
+    rows: list = []
+    for request in requests:
+        answer = await provider.fetch(request.question)
+
+        row = build_row(answer, expected_sources=request.expected_sources)
+
+        # Add input fields so each item is clearly identified in the output
+        if isinstance(row, dict):
+            row = {
+                "question": request.question,
+                "expected_citation": ",".join(request.expected_sources),
+                **row,
+            }
+
+        rows.append(row)
+
+    return rows
 
 
 def _print_rich_table(df) -> None:
@@ -71,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="ai-source-citation")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    check = sub.add_parser("check", help="Run a Google AI Overview citation check")
+    check = sub.add_parser("check", help="Run a single Google AI Overview citation check")
     check.add_argument("question", help="Search question to run (quote it).")
     check.add_argument(
         "--expected",
@@ -81,9 +170,40 @@ def main(argv: list[str] | None = None) -> int:
     )
     check.add_argument("--headless", action=argparse.BooleanOptionalAction, default=True)
     check.add_argument("--csv", type=Path, default=None, help="Write CSV output to path.")
-    check.add_argument("--json", dest="json_path", type=Path, default=None, help="Write JSON output to path.")
+    check.add_argument(
+        "--json",
+        dest="json_path",
+        type=Path,
+        default=None,
+        help="Write JSON output to path.",
+    )
     check.add_argument("--profile", default=None, help="Path to Playwright user data dir.")
     check.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Pause after page load so you can sign in manually.",
+    )
+
+    check_config = sub.add_parser(
+        "check-config",
+        help="Run citation checks from a JSON config file",
+    )
+    check_config.add_argument(
+        "config",
+        type=Path,
+        help="Path to JSON config file containing a 'search' array.",
+    )
+    check_config.add_argument("--headless", action=argparse.BooleanOptionalAction, default=True)
+    check_config.add_argument("--csv", type=Path, default=None, help="Write CSV output to path.")
+    check_config.add_argument(
+        "--json",
+        dest="json_path",
+        type=Path,
+        default=None,
+        help="Write JSON output to path.",
+    )
+    check_config.add_argument("--profile", default=None, help="Path to Playwright user data dir.")
+    check_config.add_argument(
         "--interactive",
         action="store_true",
         help="Pause after page load so you can sign in manually.",
@@ -100,17 +220,50 @@ def main(argv: list[str] | None = None) -> int:
         if not expected_sources:
             parser.error("at least one --expected value is required")
 
+        requests = [
+            SearchRequest(
+                question=question,
+                expected_sources=expected_sources,
+            )
+        ]
+
         rows = asyncio.run(
-            _check_async(
-                question,
-                expected_sources,
+            _run_checks_async(
+                requests,
                 headless=args.headless,
                 profile=args.profile,
                 interactive=args.interactive,
             )
         )
         df = to_dataframe(rows)
+        _print_rich_table(df)
 
+        if args.csv:
+            df.to_csv(args.csv, index=False)
+            console.print(f"[green]Wrote CSV:[/green] {args.csv}")
+
+        if args.json_path:
+            records = df.to_dict(orient="records")
+            args.json_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+            console.print(f"[green]Wrote JSON:[/green] {args.json_path}")
+
+        return 0
+
+    if args.command == "check-config":
+        try:
+            requests = _load_search_requests(args.config)
+        except ValueError as exc:
+            parser.error(str(exc))
+
+        rows = asyncio.run(
+            _run_checks_async(
+                requests,
+                headless=args.headless,
+                profile=args.profile,
+                interactive=args.interactive,
+            )
+        )
+        df = to_dataframe(rows)
         _print_rich_table(df)
 
         if args.csv:
