@@ -154,6 +154,22 @@ This will:
 * Analyse citations
 * Output results to the console.
 
+### Run the Tool (Expected Answer)
+
+You can check for the expected answer by providing an --expected-answer option
+
+Example:
+
+```bash
+poetry run ai-source-citation check \
+  "What is the latest uk unemployment rate percentage?" \
+  --expected ons.gov.uk \
+  --expected-answer "5.2%" \
+  --no-headless \
+  --profile .pw-profile
+```
+
+--expected-answer optionally validates that the returned AI answer contains the expected value.
 
 ## Usage Instructions - Batch
 
@@ -170,7 +186,8 @@ The following is an example file of searches and exected citations.
   "search": [
     {
       "question": "What is the latest uk unemployment rate percentage?",
-      "expected_citation": "ons.gov.uk"
+      "expected_citation": "ons.gov.uk",
+      "expected_answer": "5.2%"
     },
     {
       "question": "What is the latest official figure for inflation in the uk?",
@@ -187,6 +204,8 @@ The following is an example file of searches and exected citations.
   ]
 }
 ```
+
+expected_answer is optional. When provided, the tool will check whether the AI response contains the expected answer text.
 
 ### Batch Run (no-headless)
 
@@ -240,6 +259,10 @@ The output is displayed as a table with the following elements:
 
 **matched_sources** - the expected sources that matched in the citations
 
+**expected_answer** – optional expected value to check in the AI answer
+
+**answer_matched** – whether the AI answer text contains the expected answer (True / False / null)
+
 ### Single shot at the CLI
 
 This will return a tabular output
@@ -250,7 +273,7 @@ If the --csv flag is used a CSV file will be written containing the results.
 
 #### CSV Output Headings
 ```bash
-provider,question,expected_sources,answer_text,citations,citation_domains,citation_labels,matched,matched_sources
+provider,question,expected_sources,expected_answer,answer_text,answer_matched,citations,citation_domains,citation_labels,matched,matched_sources
 ```
 
 If the --json flag is used a JSON file will be written containing the results.
@@ -263,7 +286,9 @@ If the --json flag is used a JSON file will be written containing the results.
     "provider": "google",
     "question": "What is the latest uk unemployment rate percentage?",
     "expected_sources": "ons.gov.uk",
-    "answer_text": "The UK unemployment rate for October to December 2025 was 5.2%, reflecting an increase from 4.4% a year earlier. This represents 1.88 million unemployed people aged 16 and over, marking the highest rate since 2021. The House of Commons Library +2",
+    "expected_answer": "5.2%",
+    "answer_text": "The UK unemployment rate for October to December 2025 was 5.2%. This rate, representing 1.88 million people aged 16 and over, is the highest level since 2021. Data released in February 2026 shows an increase in unemployment of 331,000 compared to the previous year. The House of Commons Library +2",
+    "answer_matched": true,
     "citations": "...https://www.ons.gov.uk&quot;\nhttps://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment#:~:text\\u003dUnemployment%20rate%20(aged%2016%20and\nhttps://encrypted-tbn0.gstatic.com/images?q\\u003dtbn:ANd9GcQWWGtZDUF7R3LsMGLoUAa8xvrreJxS516IFj0FqTXNdLwOpmb6&quot;\nhttps://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment&quot;\n...",
     "citation_domains": "..ons.gov.uk&quot;, ons.gov.uk, ...",
     "citation_labels": "The House of Commons Library",

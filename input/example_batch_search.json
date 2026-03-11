@@ -1,20 +1,29 @@
 {
   "search": [
     {
+      "question": "what is the population in the uk in 2025?",
+      "expected_citation": "ons.gov.uk",
+      "expected_answer": "69,487,000"
+    },
+    {
       "question": "What is the latest uk unemployment rate percentage?",
-      "expected_citation": "ons.gov.uk"
+      "expected_citation": "ons.gov.uk",
+      "expected_answer": "5.2%"
     },
     {
       "question": "What is the latest official figure for inflation in the uk?",
-      "expected_citation": "ons.gov.uk"
+      "expected_citation": "ons.gov.uk",
+      "expected_answer": "3.2%"
     },
     {
       "question": "How many alcohol related deaths were there in 2023?",
-      "expected_citation": "ons.gov.uk"
+      "expected_citation": "ons.gov.uk",
+      "expected_answer": "6,069"
     },
     {
       "question": "when is eastenders shown in the uk",
-      "expected_citation": "bbc.co.uk"
+      "expected_citation": "bbc.co.uk",
+      "expected_answer": "Wednesday"
     }
   ]
 }

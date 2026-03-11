@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence
@@ -20,6 +21,7 @@ console = Console()
 class SearchRequest:
     question: str
     expected_sources: list[str]
+    expected_answer: str | None = None
 
 
 def _parse_expected(values: Iterable[str]) -> List[str]:
@@ -68,6 +70,17 @@ def _coerce_expected_citations(value: Any, *, item_index: int) -> list[str]:
     return expected
 
 
+def _coerce_expected_answer(value: Any, *, item_index: int) -> str | None:
+    if value is None:
+        return None
+
+    if not isinstance(value, str):
+        raise ValueError(f"search[{item_index}].expected_answer must be a string")
+
+    value = value.strip()
+    return value or None
+
+
 def _load_search_requests(config_path: Path) -> list[SearchRequest]:
     try:
         payload = json.loads(config_path.read_text(encoding="utf-8"))
@@ -99,11 +112,16 @@ def _load_search_requests(config_path: Path) -> list[SearchRequest]:
             item["expected_citation"],
             item_index=idx,
         )
+        expected_answer = _coerce_expected_answer(
+            item.get("expected_answer"),
+            item_index=idx,
+        )
 
         requests.append(
             SearchRequest(
                 question=question.strip(),
                 expected_sources=expected_sources,
+                expected_answer=expected_answer,
             )
         )
 
@@ -111,6 +129,32 @@ def _load_search_requests(config_path: Path) -> list[SearchRequest]:
         raise ValueError("Config 'search' array must not be empty")
 
     return requests
+
+
+def _normalize_text(value: str) -> str:
+    """
+    Normalize text for simple containment checks:
+    - lowercase
+    - collapse whitespace
+    """
+    return re.sub(r"\s+", " ", value).strip().lower()
+
+
+def _answer_matches(answer_text: str | None, expected_answer: str | None) -> bool | None:
+    """
+    Returns:
+      - True/False when expected_answer is provided
+      - None when no expected_answer is supplied
+    """
+    if expected_answer is None:
+        return None
+
+    if not answer_text:
+        return False
+
+    normalized_answer = _normalize_text(answer_text)
+    normalized_expected = _normalize_text(expected_answer)
+    return normalized_expected in normalized_answer
 
 
 async def _run_checks_async(
@@ -130,15 +174,11 @@ async def _run_checks_async(
     for request in requests:
         answer = await provider.fetch(request.question)
 
-        row = build_row(answer, expected_sources=request.expected_sources)
-
-        # Add input fields so each item is clearly identified in the output
-        if isinstance(row, dict):
-            row = {
-                "question": request.question,
-                "expected_citation": ",".join(request.expected_sources),
-                **row,
-            }
+        row = build_row(
+                answer,
+                expected_sources=request.expected_sources,
+                expected_answer=request.expected_answer,
+        )
 
         rows.append(row)
 
@@ -167,6 +207,11 @@ def main(argv: list[str] | None = None) -> int:
         action="append",
         default=[],
         help="Expected source domain(s). Repeatable or comma-separated.",
+    )
+    check.add_argument(
+        "--expected-answer",
+        default=None,
+        help="Optional expected answer text to validate against the returned answer_text.",
     )
     check.add_argument("--headless", action=argparse.BooleanOptionalAction, default=True)
     check.add_argument("--csv", type=Path, default=None, help="Write CSV output to path.")
@@ -224,6 +269,7 @@ def main(argv: list[str] | None = None) -> int:
             SearchRequest(
                 question=question,
                 expected_sources=expected_sources,
+                expected_answer=args.expected_answer.strip() if args.expected_answer else None,
             )
         ]
 

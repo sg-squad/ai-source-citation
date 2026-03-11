@@ -26,12 +26,14 @@ class AiAnswer:
 
 @dataclass(frozen=True)
 class CheckResultRow:
-    provider: ProviderName
+    provider: str
     question: str
     expected_sources: tuple[str, ...]
+    expected_answer: str | None
     answer_text: str
-    citations: tuple[str, ...]          # citation URLs
-    citation_domains: tuple[str, ...]   # normalized domains
+    answer_matched: bool | None
+    citations: tuple[str, ...]
+    citation_domains: tuple[str, ...]
     citation_labels: tuple[str, ...]
     matched: bool
-    matched_sources: tuple[str, ...]    # which expected sources were found
+    matched_sources: tuple[str, ...]
