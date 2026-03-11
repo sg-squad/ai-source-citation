@@ -330,3 +330,7 @@ If the --json flag is used a JSON file will be written containing the results.
   }
 ]
 ```
+
+## Added Features
+
+By using the --expand-answer option the tool will click the "Show More" buttun under Google's AI Overview and capture the full AI response as the answer_text.

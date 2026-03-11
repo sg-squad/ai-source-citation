@@ -163,11 +163,13 @@ async def _run_checks_async(
     headless: bool,
     profile: Optional[str],
     interactive: bool,
+    expand_answer: bool,
 ) -> list:
     provider = GoogleAiOverviewProvider(
         headless=headless,
         user_data_dir=profile,
         interactive=interactive,
+        expand_answer=expand_answer,
     )
 
     rows: list = []
@@ -217,6 +219,11 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     check = sub.add_parser("check", help="Run a single Google AI Overview citation check")
+    check.add_argument(
+        "--expand-answer",
+        action="store_true",
+        help="Click 'Show more' in the AI Overview before extracting answer text.",
+    )
     check.add_argument("question", help="Search question to run (quote it).")
     check.add_argument(
         "--expected",
@@ -248,6 +255,11 @@ def main(argv: list[str] | None = None) -> int:
     check_config = sub.add_parser(
         "check-config",
         help="Run citation checks from a JSON config file",
+    )
+    check_config.add_argument(
+        "--expand-answer",
+        action="store_true",
+        help="Click 'Show more' in the AI Overview before extracting answer text.",
     )
     check_config.add_argument(
         "config",
@@ -295,6 +307,7 @@ def main(argv: list[str] | None = None) -> int:
                 headless=args.headless,
                 profile=args.profile,
                 interactive=args.interactive,
+                expand_answer=args.expand_answer
             )
         )
         df = to_dataframe(rows)
@@ -323,6 +336,7 @@ def main(argv: list[str] | None = None) -> int:
                 headless=args.headless,
                 profile=args.profile,
                 interactive=args.interactive,
+                expand_answer=args.expand_answer
             )
         )
         df = to_dataframe(rows)

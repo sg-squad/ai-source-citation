@@ -112,9 +112,10 @@ class GoogleAiOverviewProvider(SearchProvider):
         locale: str = "en-GB",
         country: str = "GB",
         headless: bool = True,
-        timeout_ms: int = 30_000,
+        timeout_ms: int = 15_000,
         use_chrome_channel: bool = True,
         interactive: bool = False,
+        expand_answer: bool = False,
     ) -> None:
         self._user_data_dir = user_data_dir
         self._locale = locale
@@ -123,6 +124,27 @@ class GoogleAiOverviewProvider(SearchProvider):
         self._timeout_ms = timeout_ms
         self._use_chrome_channel = use_chrome_channel
         self._interactive = interactive
+        self._expand_answer = expand_answer
+
+    async def _expand_ai_overview_answer(self, page) -> None:
+        candidates = [
+            page.locator("span", has_text="Show more"),
+            page.locator("button", has_text="Show more"),
+            page.locator("[role='button']", has_text="Show more"),
+            page.locator("text=Show more"),
+        ]
+
+        for locator in candidates:
+            try:
+                count = await locator.count()
+                if count > 0:
+                    first = locator.first
+                    if await first.is_visible():
+                        await first.click(timeout=2000)
+                        await page.wait_for_timeout(750)
+                        return
+            except Exception:
+                continue
 
     async def fetch(self, question: str) -> AiAnswer:
         url = (
@@ -192,6 +214,10 @@ class GoogleAiOverviewProvider(SearchProvider):
                 print("Press ENTER in the terminal when ready to continue...\n")
                 input()
 
+            if self._expand_answer:
+                await self._expand_ai_overview_answer(page)
+                await asyncio.sleep(0.5)
+
             html = await page.content()
 
             blocked_reason = _detect_blocked_page(html)
@@ -241,7 +267,7 @@ class GoogleAiOverviewProvider(SearchProvider):
             raw_debug={"source": "playwright_dom", **dom_debug},
             citation_labels=tuple(),
         )
-
+        
 
 async def _best_effort_accept_consent(page: Page) -> None:
     candidates = [
@@ -272,20 +298,26 @@ async def _extract_ai_overview_from_dom(
     debug["dom_ai_overview_found"] = "true"
     debug["dom_ai_overview_selector"] = "[data-subtree*='aimfl'], [data-subtree*='aimba']"
 
-    module = container.locator("xpath=ancestor::div[1]").first
+    module = container.locator(
+        "xpath=ancestor::div[contains(@class, 'mZJni') and contains(@class, 'Dn7Fzd')]"
+    ).first
 
-    for _ in range(5):
-        try:
-            txt = (await module.inner_text()).strip()
-        except Exception:
-            txt = ""
+    if await module.count() == 0:
+        module = container.locator("xpath=ancestor::div[1]").first
 
-        if len(txt) >= 120:
-            break
-        module = module.locator("xpath=ancestor::div[1]").first
+        for _ in range(5):
+            try:
+                txt = (await module.inner_text()).strip()
+            except Exception:
+                txt = ""
+
+            if len(txt) >= 120:
+                break
+            module = module.locator("xpath=ancestor::div[1]").first
 
     try:
         answer_text = (await module.inner_text()).strip()
+        debug["answer_text_preview"] = answer_text[:500]
     except Exception:
         return None, [], tuple(), debug
 
