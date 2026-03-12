@@ -125,7 +125,7 @@ data/
 *.sqlite
 *.db
 
-output/
+output/*
 results/
 analysis/
 
