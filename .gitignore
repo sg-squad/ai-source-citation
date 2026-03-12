@@ -126,6 +126,10 @@ data/
 *.db
 
 output/*
+# Allow these files
+!output/example_batch_search.json
+!output/example_batch_search.csv
+
 results/
 analysis/
 

@@ -1,0 +1,206 @@
+{
+  "run": {
+    "provider": "google",
+    "timestamp": "2026-03-12T13:34:15.098779Z"
+  },
+  "summary": {
+    "checks_run": 5,
+    "checks_passed": 3,
+    "checks_failed": 2
+  },
+  "failures": [
+    {
+      "question": "How many alcohol related deaths were there in 2023?",
+      "reason": "answer didn't match expected"
+    },
+    {
+      "question": "when is eastenders shown in the uk",
+      "reason": "citation didn't match expected"
+    }
+  ],
+  "results": [
+    {
+      "provider": "google",
+      "question": "what is the population in the uk in 2025?",
+      "expected_sources": [
+        "ons.gov.uk"
+      ],
+      "expected_answer": "69,487,000",
+      "answer_text": "The UK population in 2025 is estimated to be approximately 69.5 million to 69.7 million, with significant growth driven by net international migration. The Office for National Statistics (ONS) provisional estimate for mid-2025 is 69.49 million, while some forecasts suggest the population will reach 70 million by late 2025. Office for National Statistics +2 Key details regarding the UK population in 2025: Provisional Estimate: The ONS provisional estimate of the population of the UK on 30 June 2025 is 69,487,000. Growth Drivers: Population increase is heavily driven by net international migration, with a smaller contribution from natural change (births minus deaths). Long-Term Trend: The population is projected to continue growing, with forecasts suggesting it could reach over 72 million by 2032. Regional Breakdown: England has the highest population density, while in mid-2024, the population was 69.3 million, with substantial growth in England (1.2%), followed by Wales (0.8%), Scotland (0.7%), and Northern Ireland (0.3%). Office for National Statistics +4 Note: These figures are based on projections and estimates, which are subject to revision.",
+      "answer_matched": true,
+      "citations": [
+        "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/bulletins/provisionalpopulationestimatefortheuk/mid2025",
+        "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/bulletins/annualmidyearpopulationestimates/mid2024#:~:text=The%20population%20of%20the%20UK%20is%20estimated,*%20**Wales**%200.8%25%20*%20**Northern%20Ireland**%200.3%25",
+        "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationprojections/bulletins/nationalpopulationprojections/2022based",
+        "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates",
+        "https://www.icaew.com/insights/viewpoints-on-the-news/2025/may-2025/chart-of-the-week-uk-population#:~:text=The%20Office%20for%20National%20Statistics%20(ONS)%20estimates,*%20**September%202025**%20Extrapolated%20to%2070%20million",
+        "https://lordslibrary.parliament.uk/uk-demographics-common-good-foundation-report-on-population-changes/",
+        "https://tradingeconomics.com/united-kingdom/population"
+      ],
+      "citation_domains": [
+        "ons.gov.uk",
+        "ons.gov.uk",
+        "ons.gov.uk",
+        "ons.gov.uk",
+        "icaew.com",
+        "lordslibrary.parliament.uk",
+        "tradingeconomics.com"
+      ],
+      "citation_labels": [
+        "Office for National Statistics",
+        "ICAEW.com",
+        "UK Parliament",
+        "Trading Economics"
+      ],
+      "matched": true,
+      "matched_sources": [
+        "ons.gov.uk"
+      ]
+    },
+    {
+      "provider": "google",
+      "question": "What is the latest uk unemployment rate percentage?",
+      "expected_sources": [
+        "ons.gov.uk"
+      ],
+      "expected_answer": "5.2%",
+      "answer_text": "The UK unemployment rate for people aged 16 and over was 5.2% for the period of October to December 2025, according to the Office for National Statistics. This represents a rise in unemployment to its highest level since early 2021, with 1.88 million people unemployed. Office for National Statistics +4 Key details: Unemployment Rate (16+): 5.2% (Oct-Dec 2025). Unemployment Rate (16-64): 5.3% (Oct-Dec 2025). Employment Rate (16-64): 75.0%. Context: The labour market has shown signs of weakening, with the rate increasing from previous quarters. Next Release: 19 March 2026. Office for National Statistics +2 Data indicates the unemployment rate has been generally increasing since mid-2022. Office for National Statistics",
+      "answer_matched": true,
+      "citations": [
+        "https://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment",
+        "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/uklabourmarket/february2026#:~:text=We%20recommend%20using%20LFS%20estimates,estimates%20of%20a%20year%20ago.",
+        "https://www.bbc.co.uk/news/articles/cdxrp7znkdlo#:~:text=While%20the%20unemployment%20figure%20is,economy%20is%20still%20generating%20jobs.%22",
+        "https://commonslibrary.parliament.uk/research-briefings/cbp-9366/#:~:text=LFS%20data%20suggests%20there%20has,bonuses%20and%204.2%25%20excluding%20bonuses.",
+        "https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/bulletins/employmentintheuk/july2025#:~:text=6.,since%20March%20to%20May%202024.",
+        "https://www.statista.com/statistics/279898/unemployment-rate-in-the-united-kingdom-uk/#:~:text=The%20unemployment%20rate%20of%20the,percent%2C%20compared%20to%204.5%20percent."
+      ],
+      "citation_domains": [
+        "ons.gov.uk",
+        "ons.gov.uk",
+        "bbc.co.uk",
+        "commonslibrary.parliament.uk",
+        "ons.gov.uk",
+        "statista.com"
+      ],
+      "citation_labels": [
+        "Office for National Statistics",
+        "BBC",
+        "The House of Commons Library",
+        "Statista"
+      ],
+      "matched": true,
+      "matched_sources": [
+        "ons.gov.uk"
+      ]
+    },
+    {
+      "provider": "google",
+      "question": "What is the latest official figure for inflation in the uk?",
+      "expected_sources": [
+        "ons.gov.uk"
+      ],
+      "expected_answer": "3.2%",
+      "answer_text": "The UK annual inflation rate, measured by the Consumer Prices Index (CPI), was 3.0% in January 2026, according to official ONS figures. This is down from 3.4% in December 2025, driven by falling prices in transport and food. Office for National Statistics +2 CPI Inflation (January 2026): 3.0% CPIH Inflation (including housing costs, January 2026): 3.2% Core Inflation (excl. energy/food, January 2026): 3.1% Next Release: 25 March 2026 Office for National Statistics +4 While the rate has eased from the 11.1% peak in October 2022, it remains above the Bank of England's 2% target. BBC +1",
+      "answer_matched": true,
+      "citations": [
+        "https://www.ons.gov.uk/economy/inflationandpriceindices#:~:text=CPIH%20ANNUAL%20RATE%2000:%20ALL,12%20months%20to%20December%202025.",
+        "https://www.bbc.co.uk/news/articles/c17rgd8e9gjo#:~:text=Although%20the%20January%20CPI%20figure,Spring%20Statement%20on%203%20March.",
+        "https://commonslibrary.parliament.uk/research-briefings/sn02792/#:~:text=Latest%20inflation%20data,Autumn%20Budget%202025:%20A%20summary.",
+        "https://researchbriefings.files.parliament.uk/documents/SN02792/SN02792.pdf#:~:text=The%20Consumer%20Prices%20Index%20(CPI)%20is%20the,in%20January%2C%20down%20from%203.4%25%20in%20December.",
+        "https://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/january2026#:~:text=food%20products%20not%20elsewhere%20classified,0.4%25%20increase%20a%20year%20ago.",
+        "https://www.bbc.co.uk/news/live/cg4gzr56wd2t#:~:text=The%20rate%20of%20inflation%20dropped,for%20National%20Statistics%20(ONS)."
+      ],
+      "citation_domains": [
+        "ons.gov.uk",
+        "bbc.co.uk",
+        "commonslibrary.parliament.uk",
+        "researchbriefings.files.parliament.uk",
+        "ons.gov.uk",
+        "bbc.co.uk"
+      ],
+      "citation_labels": [
+        "Office for National Statistics",
+        "BBC",
+        "The House of Commons Library",
+        "UK Parliament"
+      ],
+      "matched": true,
+      "matched_sources": [
+        "ons.gov.uk"
+      ]
+    },
+    {
+      "provider": "google",
+      "question": "How many alcohol related deaths were there in 2023?",
+      "expected_sources": [
+        "ons.gov.uk"
+      ],
+      "expected_answer": "6,069",
+      "answer_text": "In 2023, there were 10,473 deaths from alcohol-specific causes registered in the UK, marking a 4% increase from 2022 and the highest number on record. The majority of these deaths (7,922) were due to alcoholic liver disease. The death rate for males was approximately double that of females. Office for National Statistics +1 UK Total: 10,473 alcohol-specific deaths (15.9 per 100,000 people). England: 8,274 alcohol-specific deaths, a 4.6% increase from 2022. Scotland: 1,277 alcohol-specific deaths, consistent with 2022 levels. Demographics: Male death rates remained around double that of females (21.9 vs 10.3 per 100,000). Office for National Statistics +5 These figures, reported by the Office for National Statistics (ONS) and Alcohol Change UK, represent deaths directly caused by alcohol consumption, such as alcoholic liver disease, rather than incidents where alcohol was a contributing factor. Alcohol Change UK +4",
+      "answer_matched": false,
+      "citations": [
+        "https://alcoholchange.org.uk/alcohol-facts/fact-sheets/alcohol-statistics#:~:text=In%202023%2C%20there%20were%2010%2C473,on%20Alcohol%20and%20the%20liver",
+        "https://www.ons.gov.uk/peoplepopulationandcommunity/healthandsocialcare/causesofdeath/bulletins/alcoholrelateddeathsintheunitedkingdom/registeredin2023#:~:text=In%202023:,16.6%20deaths%20per%20100%2C000%20people).",
+        "https://www.ias.org.uk/news/alcohol-specific-deaths-in-england-rise-by-4-6-in-2023/",
+        "https://www.gov.uk/government/statistics/alcohol-profile-february-2025-update/alcohol-profile-short-statistical-commentary-february-2025#:~:text=There%20were%20statistically%20significant%20inequalities,2016%20(36.3%20per%20100%2C000).",
+        "https://www.alcohol-focus-scotland.org.uk/news/news/afs-comment-on-ons-alcohol-specific-deaths-statistics/#:~:text=Overall%2C%20in%202023%2C%20there%20were,2022%20%E2%80%93%20a%2015%20year%20high.",
+        "https://www.drugsandalcohol.ie/41807/#:~:text=Home%20%3E%20Alcohol%2Dspecific%20deaths%202023,Edinburgh:%20National%20Records%20of%20Scotland.&text=External%20website:%20https://www,female%20deaths%20decreased%20by%2024.&text=14%20p.",
+        "https://www.nuffieldtrust.org.uk/news-item/deaths-from-drinking-are-at-a-record-high-does-england-need-a-new-alcohol-strategy#:~:text=But%20deaths%20from%20alcohol%20are,as%20heavy%20drinking%20nonetheless%20fell."
+      ],
+      "citation_domains": [
+        "alcoholchange.org.uk",
+        "ons.gov.uk",
+        "ias.org.uk",
+        "gov.uk",
+        "alcohol-focus-scotland.org.uk",
+        "drugsandalcohol.ie",
+        "nuffieldtrust.org.uk"
+      ],
+      "citation_labels": [
+        "Alcohol Change UK",
+        "Office for National Statistics",
+        "Institute of Alcohol Studies",
+        "GOV.UK",
+        "Alcohol Focus Scotland",
+        "National Drugs Library",
+        "Nuffield Trust"
+      ],
+      "matched": true,
+      "matched_sources": [
+        "ons.gov.uk"
+      ]
+    },
+    {
+      "provider": "google",
+      "question": "when is eastenders shown in the uk",
+      "expected_sources": [
+        "bbc.co.uk"
+      ],
+      "expected_answer": "Wednesday",
+      "answer_text": "EastEnders typically airs on BBC One at 7:30 PM, Monday to Thursday. Episodes are usually available to watch on BBC iPlayer from 6:00 AM on the day of transmission. Occasionally, episodes may move to BBC Two or have time changes due to sporting events or holidays. Facebook +3 Standard Schedule: Monday, Tuesday, Wednesday, and Thursday at 7:30 PM on BBC One. Alternative Viewing: BBC iPlayer allows viewing from 6:00 AM, though sometimes this is cancelled for special, single-release episodes. Changes: During events like Wimbledon, the show may move to BBC Two or run on a revised schedule. Facebook +3",
+      "answer_matched": true,
+      "citations": [
+        "https://www.facebook.com/BBCEastEnders/#:~:text=Walford%20REEvisited,John%20Murdock%20and%201K%20others",
+        "https://www.thesun.co.uk/tv/35579976/full-list-of-soap-schedule-changes/#:~:text=As%20well%20as%20not%20being,Wimbledon%20taking%20over%20BBC%20One.&text=The%20same%20scheduling%20pattern%20will,to%20kick%2Doff%20at%207pm.",
+        "https://www.thesun.co.uk/tv/35739908/eastenders-episodes-early-surprise-schedule-shake-up/#:~:text=It%20is%20a%20bumper%20season,air%20at%20a%20different%20time.",
+        "https://www.wimbledonguardian.co.uk/news/national/uk-today/25436321.eastenders-not-bbc-iplayer-today-episode-axed/#:~:text=Episode%20axed,-2nd%20September%202025&text=EastEnders%20has%20confirmed%20it%20has,around%20Albert%20Square%20and%20beyond.",
+        "https://www.thenational.scot/news/national/uk-today/25221104.isnt-eastenders-tv-tonight-bbc-schedule-change/#:~:text=Recommended%20reading:,6am%20as%20an%20early%20release."
+      ],
+      "citation_domains": [
+        "facebook.com",
+        "thesun.co.uk",
+        "thesun.co.uk",
+        "wimbledonguardian.co.uk",
+        "thenational.scot"
+      ],
+      "citation_labels": [
+        "Facebook",
+        "The Sun",
+        "Wimbledon Times",
+        "TheNational.scot"
+      ],
+      "matched": false,
+      "matched_sources": []
+    }
+  ]
+}
