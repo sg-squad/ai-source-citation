@@ -5,6 +5,7 @@ import asyncio
 import json
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence
 
@@ -22,6 +23,20 @@ class SearchRequest:
     question: str
     expected_sources: list[str]
     expected_answer: str | None = None
+
+
+@dataclass(frozen=True)
+class FailureDetail:
+    question: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    total_checks: int
+    passed_checks: int
+    failed_checks: int
+    failures: list[FailureDetail]
 
 
 def _parse_expected(values: Iterable[str]) -> List[str]:
@@ -177,9 +192,9 @@ async def _run_checks_async(
         answer = await provider.fetch(request.question)
 
         row = build_row(
-                answer,
-                expected_sources=request.expected_sources,
-                expected_answer=request.expected_answer,
+            answer,
+            expected_sources=request.expected_sources,
+            expected_answer=request.expected_answer,
         )
 
         rows.append(row)
@@ -212,6 +227,115 @@ def _row_to_json_record(row) -> dict[str, object]:
         "matched": row.matched,
         "matched_sources": list(row.matched_sources),
     }
+
+
+def _check_passed(row: Any) -> bool:
+    """
+    A row passes when:
+    - citation/source matching passed, and
+    - answer matching passed when an expected answer was supplied
+    """
+    citations_ok = bool(row.matched)
+    answer_ok = row.answer_matched in (True, None)
+    return citations_ok and answer_ok
+
+
+def _failure_reason(row: Any) -> str:
+    reasons: list[str] = []
+
+    if not row.matched:
+        reasons.append("citation didn't match expected")
+
+    if row.answer_matched is False:
+        reasons.append("answer didn't match expected")
+
+    if not reasons:
+        return "unknown failure"
+
+    return " and ".join(reasons)
+
+
+def _build_run_summary(rows: Sequence[Any]) -> RunSummary:
+    failures: list[FailureDetail] = []
+
+    for row in rows:
+        if not _check_passed(row):
+            failures.append(
+                FailureDetail(
+                    question=row.question,
+                    reason=_failure_reason(row),
+                )
+            )
+
+    total_checks = len(rows)
+    failed_checks = len(failures)
+    passed_checks = total_checks - failed_checks
+
+    return RunSummary(
+        total_checks=total_checks,
+        passed_checks=passed_checks,
+        failed_checks=failed_checks,
+        failures=failures,
+    )
+
+
+def _print_run_summary(summary: RunSummary) -> None:
+    summary_table = Table(title="Run Summary")
+    summary_table.add_column("Metric")
+    summary_table.add_column("Value")
+
+    summary_table.add_row("Number of checks run", str(summary.total_checks))
+    summary_table.add_row("Number of checks passed", str(summary.passed_checks))
+    summary_table.add_row("Number of checks failed", str(summary.failed_checks))
+
+    console.print(summary_table)
+
+    if summary.failures:
+        failure_table = Table(title="Failures")
+        failure_table.add_column("Question")
+        failure_table.add_column("Reason for failure")
+
+        for failure in summary.failures:
+            failure_table.add_row(failure.question, failure.reason)
+
+        console.print(failure_table)
+
+
+def _write_outputs(rows: Sequence[Any], *, csv_path: Path | None, json_path: Path | None) -> None:
+    df = to_dataframe(rows)
+    _print_rich_table(df)
+
+    summary = _build_run_summary(rows)
+
+    if csv_path:
+        df.to_csv(csv_path, index=False)
+        console.print(f"[green]Wrote CSV:[/green] {csv_path}")
+
+    if json_path:
+        payload = {
+            "run": {
+                "provider": rows[0].provider if rows else None,
+                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            },
+            "summary": {
+                "checks_run": summary.total_checks,
+                "checks_passed": summary.passed_checks,
+                "checks_failed": summary.failed_checks,
+            },
+            "failures": [
+                {
+                    "question": failure.question,
+                    "reason": failure.reason,
+                }
+                for failure in summary.failures
+            ],
+            "results": [_row_to_json_record(row) for row in rows],
+        }
+
+        json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        console.print(f"[green]Wrote JSON:[/green] {json_path}")
+
+    _print_run_summary(summary)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -307,22 +431,14 @@ def main(argv: list[str] | None = None) -> int:
                 headless=args.headless,
                 profile=args.profile,
                 interactive=args.interactive,
-                expand_answer=args.expand_answer
+                expand_answer=args.expand_answer,
             )
         )
-        df = to_dataframe(rows)
-        _print_rich_table(df)
 
-        if args.csv:
-            df.to_csv(args.csv, index=False)
-            console.print(f"[green]Wrote CSV:[/green] {args.csv}")
+        _write_outputs(rows, csv_path=args.csv, json_path=args.json_path)
 
-        if args.json_path:
-            records = [_row_to_json_record(row) for row in rows]
-            args.json_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
-            console.print(f"[green]Wrote JSON:[/green] {args.json_path}")
-
-        return 0
+        summary = _build_run_summary(rows)
+        return 0 if summary.failed_checks == 0 else 1
 
     if args.command == "check-config":
         try:
@@ -336,22 +452,14 @@ def main(argv: list[str] | None = None) -> int:
                 headless=args.headless,
                 profile=args.profile,
                 interactive=args.interactive,
-                expand_answer=args.expand_answer
+                expand_answer=args.expand_answer,
             )
         )
-        df = to_dataframe(rows)
-        _print_rich_table(df)
 
-        if args.csv:
-            df.to_csv(args.csv, index=False)
-            console.print(f"[green]Wrote CSV:[/green] {args.csv}")
+        _write_outputs(rows, csv_path=args.csv, json_path=args.json_path)
 
-        if args.json_path:
-            records = [_row_to_json_record(row) for row in rows]
-            args.json_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
-            console.print(f"[green]Wrote JSON:[/green] {args.json_path}")
-
-        return 0
+        summary = _build_run_summary(rows)
+        return 0 if summary.failed_checks == 0 else 1
 
     return 1
 
