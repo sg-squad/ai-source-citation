@@ -128,10 +128,8 @@ class GoogleAiOverviewProvider(SearchProvider):
 
     async def _expand_ai_overview_answer(self, page) -> None:
         candidates = [
-            page.locator("span", has_text="Show more"),
-            page.locator("button", has_text="Show more"),
-            page.locator("[role='button']", has_text="Show more"),
-            page.locator("text=Show more"),
+            page.get_by_text("Show more", exact=True),
+            page.locator("[role='button']").filter(has_text=re.compile(r"^Show more$")),
         ]
 
         for locator in candidates:
