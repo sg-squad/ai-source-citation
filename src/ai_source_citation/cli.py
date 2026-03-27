@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
-import re
-from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, List, Optional, Sequence
 
@@ -13,30 +9,23 @@ from rich.console import Console
 from rich.table import Table
 
 from ai_source_citation.providers.google import GoogleAiOverviewProvider
-from ai_source_citation.reporting import build_row, to_dataframe
+from ai_source_citation.reporting import build_json_report, build_row, to_dataframe
+from ai_source_citation.ui.html_report import open_html_report, write_html_report
 
 console = Console()
 
 
-@dataclass(frozen=True)
 class SearchRequest:
-    question: str
-    expected_sources: list[str]
-    expected_answer: str | None = None
-
-
-@dataclass(frozen=True)
-class FailureDetail:
-    question: str
-    reason: str
-
-
-@dataclass(frozen=True)
-class RunSummary:
-    total_checks: int
-    passed_checks: int
-    failed_checks: int
-    failures: list[FailureDetail]
+    def __init__(
+        self,
+        *,
+        question: str,
+        expected_sources: list[str],
+        expected_answer: str | None = None,
+    ) -> None:
+        self.question = question
+        self.expected_sources = expected_sources
+        self.expected_answer = expected_answer
 
 
 def _parse_expected(values: Iterable[str]) -> List[str]:
@@ -97,6 +86,8 @@ def _coerce_expected_answer(value: Any, *, item_index: int) -> str | None:
 
 
 def _load_search_requests(config_path: Path) -> list[SearchRequest]:
+    import json
+
     try:
         payload = json.loads(config_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -146,32 +137,6 @@ def _load_search_requests(config_path: Path) -> list[SearchRequest]:
     return requests
 
 
-def _normalize_text(value: str) -> str:
-    """
-    Normalize text for simple containment checks:
-    - lowercase
-    - collapse whitespace
-    """
-    return re.sub(r"\s+", " ", value).strip().lower()
-
-
-def _answer_matches(answer_text: str | None, expected_answer: str | None) -> bool | None:
-    """
-    Returns:
-      - True/False when expected_answer is provided
-      - None when no expected_answer is supplied
-    """
-    if expected_answer is None:
-        return None
-
-    if not answer_text:
-        return False
-
-    normalized_answer = _normalize_text(answer_text)
-    normalized_expected = _normalize_text(expected_answer)
-    return normalized_expected in normalized_answer
-
-
 async def _run_checks_async(
     requests: Sequence[SearchRequest],
     *,
@@ -213,129 +178,53 @@ def _print_rich_table(df) -> None:
     console.print(table)
 
 
-def _row_to_json_record(row) -> dict[str, object]:
-    return {
-        "provider": row.provider,
-        "question": row.question,
-        "expected_sources": list(row.expected_sources),
-        "expected_answer": row.expected_answer,
-        "answer_text": row.answer_text,
-        "answer_matched": row.answer_matched,
-        "citations": list(row.citations),
-        "citation_domains": list(row.citation_domains),
-        "citation_labels": list(row.citation_labels),
-        "matched": row.matched,
-        "matched_sources": list(row.matched_sources),
-    }
-
-
-def _check_passed(row: Any) -> bool:
-    """
-    A row passes when:
-    - citation/source matching passed, and
-    - answer matching passed when an expected answer was supplied
-    """
-    citations_ok = bool(row.matched)
-    answer_ok = row.answer_matched in (True, None)
-    return citations_ok and answer_ok
-
-
-def _failure_reason(row: Any) -> str:
-    reasons: list[str] = []
-
-    if not row.matched:
-        reasons.append("citation didn't match expected")
-
-    if row.answer_matched is False:
-        reasons.append("answer didn't match expected")
-
-    if not reasons:
-        return "unknown failure"
-
-    return " and ".join(reasons)
-
-
-def _build_run_summary(rows: Sequence[Any]) -> RunSummary:
-    failures: list[FailureDetail] = []
-
-    for row in rows:
-        if not _check_passed(row):
-            failures.append(
-                FailureDetail(
-                    question=row.question,
-                    reason=_failure_reason(row),
-                )
-            )
-
-    total_checks = len(rows)
-    failed_checks = len(failures)
-    passed_checks = total_checks - failed_checks
-
-    return RunSummary(
-        total_checks=total_checks,
-        passed_checks=passed_checks,
-        failed_checks=failed_checks,
-        failures=failures,
-    )
-
-
-def _print_run_summary(summary: RunSummary) -> None:
+def _print_run_summary(summary: dict[str, int]) -> None:
     summary_table = Table(title="Run Summary")
     summary_table.add_column("Metric")
     summary_table.add_column("Value")
 
-    summary_table.add_row("Number of checks run", str(summary.total_checks))
-    summary_table.add_row("Number of checks passed", str(summary.passed_checks))
-    summary_table.add_row("Number of checks failed", str(summary.failed_checks))
+    summary_table.add_row("Number of checks run", str(summary["checks_run"]))
+    summary_table.add_row("Number of checks passed", str(summary["checks_passed"]))
+    summary_table.add_row("Number of checks failed", str(summary["checks_failed"]))
 
     console.print(summary_table)
 
-    if summary.failures:
-        failure_table = Table(title="Failures")
-        failure_table.add_column("Question")
-        failure_table.add_column("Reason for failure")
 
-        for failure in summary.failures:
-            failure_table.add_row(failure.question, failure.reason)
+def _write_outputs(
+    rows: Sequence[Any],
+    *,
+    csv_path: Path | None,
+    json_path: Path | None,
+    html_path: Path | None,
+    open_html: bool,
+) -> dict[str, Any]:
+    import json
 
-        console.print(failure_table)
-
-
-def _write_outputs(rows: Sequence[Any], *, csv_path: Path | None, json_path: Path | None) -> None:
     df = to_dataframe(rows)
     _print_rich_table(df)
 
-    summary = _build_run_summary(rows)
+    provider = rows[0].provider if rows else "unknown"
+    report_payload = build_json_report(rows, provider=provider)
 
     if csv_path:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(csv_path, index=False)
         console.print(f"[green]Wrote CSV:[/green] {csv_path}")
 
     if json_path:
-        payload = {
-            "run": {
-                "provider": rows[0].provider if rows else None,
-                "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-            },
-            "summary": {
-                "checks_run": summary.total_checks,
-                "checks_passed": summary.passed_checks,
-                "checks_failed": summary.failed_checks,
-            },
-            "failures": [
-                {
-                    "question": failure.question,
-                    "reason": failure.reason,
-                }
-                for failure in summary.failures
-            ],
-            "results": [_row_to_json_record(row) for row in rows],
-        }
-
-        json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(report_payload, indent=2), encoding="utf-8")
         console.print(f"[green]Wrote JSON:[/green] {json_path}")
 
-    _print_run_summary(summary)
+    if html_path:
+        write_html_report(report_payload, html_path)
+        console.print(f"[green]Wrote HTML:[/green] {html_path}")
+
+        if open_html:
+            open_html_report(html_path)
+
+    _print_run_summary(report_payload["summary"])
+    return report_payload
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -369,6 +258,18 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Write JSON output to path.",
     )
+    check.add_argument(
+        "--html",
+        dest="html_path",
+        type=Path,
+        default=None,
+        help="Write HTML output to path.",
+    )
+    check.add_argument(
+        "--open-html",
+        action="store_true",
+        help="Open the generated HTML report in a browser.",
+    )
     check.add_argument("--profile", default=None, help="Path to Playwright user data dir.")
     check.add_argument(
         "--interactive",
@@ -398,6 +299,18 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Write JSON output to path.",
+    )
+    check_config.add_argument(
+        "--html",
+        dest="html_path",
+        type=Path,
+        default=None,
+        help="Write HTML output to path.",
+    )
+    check_config.add_argument(
+        "--open-html",
+        action="store_true",
+        help="Open the generated HTML report in a browser.",
     )
     check_config.add_argument("--profile", default=None, help="Path to Playwright user data dir.")
     check_config.add_argument(
@@ -435,10 +348,15 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
 
-        _write_outputs(rows, csv_path=args.csv, json_path=args.json_path)
+        report_payload = _write_outputs(
+            rows,
+            csv_path=args.csv,
+            json_path=args.json_path,
+            html_path=args.html_path,
+            open_html=args.open_html,
+        )
 
-        summary = _build_run_summary(rows)
-        return 0 if summary.failed_checks == 0 else 1
+        return 0 if report_payload["summary"]["checks_failed"] == 0 else 1
 
     if args.command == "check-config":
         try:
@@ -456,10 +374,15 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
 
-        _write_outputs(rows, csv_path=args.csv, json_path=args.json_path)
+        report_payload = _write_outputs(
+            rows,
+            csv_path=args.csv,
+            json_path=args.json_path,
+            html_path=args.html_path,
+            open_html=args.open_html,
+        )
 
-        summary = _build_run_summary(rows)
-        return 0 if summary.failed_checks == 0 else 1
+        return 0 if report_payload["summary"]["checks_failed"] == 0 else 1
 
     return 1
 

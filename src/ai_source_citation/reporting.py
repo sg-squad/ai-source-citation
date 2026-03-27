@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 
+from datetime import datetime, timezone
+from typing import Any, Sequence
 import pandas as pd
 
 from ai_source_citation.models import AiAnswer, CheckResultRow
@@ -59,6 +61,89 @@ def _label_matches_expected(expected: str, label: str) -> bool:
             return True
 
     return False
+
+
+def _result_status(row: CheckResultRow) -> str:
+    source_match_passed = row.matched
+    answer_match_passed = row.answer_matched is not False
+    return "passed" if source_match_passed and answer_match_passed else "failed"
+
+
+def _failure_reason(row: CheckResultRow) -> str:
+    if row.answer_text and row.answer_text.startswith("BLOCKED"):
+        return row.answer_text
+
+    source_failed = not row.matched
+    answer_failed = row.answer_matched is False
+
+    if source_failed and answer_failed:
+        return "sources and answer did not match expected"
+    if source_failed:
+        return "sources did not match expected"
+    if answer_failed:
+        return "answer did not match expected"
+
+    return ""
+
+
+def _build_run_summary(rows: Sequence[CheckResultRow]) -> dict[str, int]:
+    checks_run = len(rows)
+    checks_passed = sum(1 for row in rows if _result_status(row) == "passed")
+    checks_failed = checks_run - checks_passed
+
+    return {
+        "checks_run": checks_run,
+        "checks_passed": checks_passed,
+        "checks_failed": checks_failed,
+    }
+
+
+def _row_to_json_record(row: CheckResultRow) -> dict[str, Any]:
+    return {
+        "provider": row.provider,
+        "question": row.question,
+        "expected_sources": list(row.expected_sources),
+        "expected_answer": row.expected_answer,
+        "answer_text": row.answer_text,
+        "answer_matched": row.answer_matched,
+        "citations": list(row.citations),
+        "citation_domains": list(row.citation_domains),
+        "citation_labels": list(row.citation_labels),
+        "matched": row.matched,
+        "matched_sources": list(row.matched_sources),
+        "status": _result_status(row),
+    }
+
+
+def build_json_report(
+    rows: Sequence[CheckResultRow],
+    *,
+    provider: str,
+) -> dict[str, Any]:
+    summary = _build_run_summary(rows)
+
+    failures = [
+        {
+            "question": row.question,
+            "reason": _failure_reason(row),
+            "expected_answer": row.expected_answer,
+            "actual_answer": row.answer_text,
+            "expected_sources": list(row.expected_sources),
+            "matched_sources": list(row.matched_sources),
+        }
+        for row in rows
+        if _result_status(row) == "failed"
+    ]
+
+    return {
+        "run": {
+            "provider": provider,
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        },
+        "summary": summary,
+        "failures": failures,
+        "results": [_row_to_json_record(row) for row in rows],
+    }
 
 
 def build_row(

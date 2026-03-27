@@ -32,7 +32,7 @@
     },
     {
       "question": "how much is basic rate tax?",
-      "expected_citation": "gov.uk",
+      "expected_citation": "bbc.uk",
       "expected_answer": "20%"
     },
     {
@@ -43,6 +43,11 @@
       "question": "when is eastenders shown in the uk",
       "expected_citation": "bbc.co.uk",
       "expected_answer": "Wednesday"
+    },
+    {
+      "question": "what is the winner at 1pm?",
+      "expected_citation": "ons.gov.uk",
+      "expected_answer": "69,487,000"
     }
   ]
 }

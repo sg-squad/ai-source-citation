@@ -215,7 +215,9 @@ Useful for seeing the browser being launched with each test.
 poetry run ai-source-citation check-config input/example_batch_search.json \
   --csv output/results.csv \
   --json output/results.json \
+  --html output/results.html \
   --profile .pw-profile \
+  --expand-answer \
   --no-headless
 ```
 
@@ -224,7 +226,7 @@ poetry run ai-source-citation check-config input/example_batch_search.json \
 
 ### Batch Run (headless)
 
-Useful for seeing the browser being launched with each test.
+**Not suggested for initial runs** This runs without the browser being launched.
 
 ```bash
 poetry run ai-source-citation check-config input/example_batch_search.json \
@@ -333,4 +335,6 @@ If the --json flag is used a JSON file will be written containing the results.
 
 ## Added Features
 
-By using the --expand-answer option the tool will click the "Show More" buttun under Google's AI Overview and capture the full AI response as the answer_text.
+By using the **--expand-answer** option the tool will click the "Show More" buttun under Google's AI Overview and capture the full AI response as the answer_text.
+
+By using the **--html output/filename.html** option the tool will generate a simple html report of the results that can be viewed in a browser.
