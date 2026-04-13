@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 import json
 import webbrowser
 from pathlib import Path
@@ -34,8 +33,7 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     enriched_results: list[dict[str, Any]] = []
     failure_reason_by_question = {
-        failure.get("question"): failure.get("reason", "check failed")
-        for failure in failures
+        failure.get("question"): failure.get("reason", "check failed") for failure in failures
     }
 
     for result in results:
@@ -52,7 +50,9 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
         enriched = dict(result)
         enriched["status"] = "passed" if matched and answer_ok else "failed"
         enriched["failure_reason"] = failure_reason_by_question.get(question, "")
-        enriched["search_url"] = _search_url(str(result.get("provider", run.get("provider", ""))), question)
+        enriched["search_url"] = _search_url(
+            str(result.get("provider", run.get("provider", ""))), question
+        )
         enriched["expected_answer"] = expected_answer or ""
         enriched["answer_text"] = answer_text or ""
         enriched["expected_sources"] = expected_sources
