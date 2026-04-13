@@ -126,7 +126,7 @@ class GoogleAiOverviewProvider(SearchProvider):
         self._interactive = interactive
         self._expand_answer = expand_answer
 
-    async def _expand_ai_overview_answer(self, page) -> None:
+    async def _expand_ai_overview_answer(self, page: Page) -> None:
         candidates = [
             page.get_by_text("Show more", exact=True),
             page.locator("[role='button']").filter(has_text=re.compile(r"^Show more$")),

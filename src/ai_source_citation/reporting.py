@@ -38,14 +38,14 @@ def _label_matches_expected(expected: str, label: str) -> bool:
       label: Office for National Statistics
     """
     e = normalize_expected_source(expected)
-    l = label.strip().lower()
+    label_normalized = label.strip().lower()
 
-    if not l:
+    if not label_normalized:
         return False
 
     first_token = e.split(".")[0]
 
-    if first_token and first_token in l:
+    if first_token and first_token in label_normalized:
         return True
 
     aliases: dict[str, set[str]] = {
@@ -57,7 +57,7 @@ def _label_matches_expected(expected: str, label: str) -> bool:
     }
 
     for alias in aliases.get(e, set()):
-        if alias in l:
+        if alias in label_normalized:
             return True
 
     return False
