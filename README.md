@@ -1,6 +1,7 @@
 # AI Source Citation
 
-A Python CLI for checking whether Google AI Overview responses:
+A Python toolkit for extracting, analysing, and validating sources referenced in AI-generated responses.
+While the current CLI focuses on checking Google AI Overview answers, the longer-term goal is to run the same validation pipeline across other AI surfaces.
 
 1. cite the expected source domain(s), and
 2. contain an expected answer snippet (optional).
@@ -73,38 +74,18 @@ After sign-in/consent in the opened browser, return to terminal and press Enter.
 - `--json <path>`: write JSON report
 - `--html <path>`: write HTML report
 - `--profile <path>`: Playwright user-data directory
-- `--interactive`: pause for manual login
-- `--headless` / `--no-headless`: browser visibility mode
-- `--expand-answer`: click “Show more” before capture
+- `--interactive`: pause to manually log in / consent
+- `--headless` / `--no-headless`: toggle visible browser
+- `--expand-answer`: click "Show more" before scraping answer text
 
-### Single-shot-only validation flags (`check`)
+### Single-shot extras (`check`)
 
-- `--expected <domain>`: expected citation domain(s); repeatable/comma-separated
-- `--expected-answer <text>`: expected answer text snippet
+- `--expected <domain>` (repeatable or comma-separated) — required
+- `--expected-answer <text>` (optional snippet match)
 
-## Input config format (`check-config`)
+## Batch mode (recommended)
 
-`check-config` expects a JSON object with a `search` array:
-
-```json
-{
-  "search": [
-    {
-      "question": "What is the latest UK unemployment rate percentage?",
-      "expected_citation": "ons.gov.uk",
-      "expected_answer": "5.2%"
-    }
-  ]
-}
-```
-
-`expected_answer` is optional.
-
-## Usage
-
-### Batch pass/fail examples (recommended)
-
-Pass scenario:
+### Pass example
 
 ```bash
 poetry run ai-source-citation check-config input/single_search_pass.json \
@@ -116,7 +97,9 @@ poetry run ai-source-citation check-config input/single_search_pass.json \
   --no-headless
 ```
 
-Fail scenario (expected to fail answer match):
+Expected outcome: run exits success with passed checks.
+
+### Fail example
 
 ```bash
 poetry run ai-source-citation check-config input/single_search_fail.json \
@@ -128,7 +111,13 @@ poetry run ai-source-citation check-config input/single_search_fail.json \
   --no-headless
 ```
 
-### Single-shot example (modern CLI)
+Expected outcome: run exits non-zero with a failed check (for expected-answer mismatch).
+
+### Interactive/login guidance
+
+With `--interactive --no-headless`, the CLI pauses so you can sign into Google and accept prompts in the browser. After login, return to terminal and press Enter to continue.
+
+## Single-shot mode (quick ad-hoc only)
 
 ```bash
 poetry run ai-source-citation check \
@@ -144,36 +133,27 @@ poetry run ai-source-citation check \
   --no-headless
 ```
 
-## Artifacts and result interpretation
+Use this when you want a one-off check; use batch for repeatable test packs.
 
-Typical outputs:
+## Output artifacts
 
-- `output/*.csv`: flat table for spreadsheet use
-- `output/*.json`: structured run summary + per-check details
+- `output/*.csv`: tabular export for spreadsheets
+- `output/*.json`: structured report (`summary`, `failures`, `results`)
 - `output/*.html`: human-readable report
 
-Key result fields:
+Important fields:
 
-- `matched`: expected citation domain found in extracted citation domains
-- `answer_matched`: expected answer snippet found in `answer_text` (`true` / `false` / `null`)
+- `matched`: expected citation source(s) were found
+- `answer_matched`: expected answer snippet matched
 - `status`: `passed` or `failed`
 
-In JSON batch output:
+## Makefile targets
 
-- `summary.checks_passed` and `summary.checks_failed` provide run-level totals.
-- `failures[]` explains why checks failed (for example, `answer did not match expected`).
-
-## Makefile shortcuts
-
-Common tasks are wrapped in `Makefile`:
-
-- `make install` – install Python dependencies
-- `make install-browsers` – install Playwright browsers
-- `make lint` – run Ruff lint checks
-- `make typecheck` – run mypy strict checks
+- `make install` – install dependencies
+- `make playwright-install` – install Playwright browsers
+- `make lint` – run Ruff checks
+- `make format` – run Ruff formatter
+- `make typecheck` – run mypy
 - `make test` – run pytest
-- `make check-pass` – run `input/single_search_pass.json` batch to `output/results_pass.*`
-- `make check-fail` – run `input/single_search_fail.json` batch to `output/results_fail.*`
-- `make fmt` – run Ruff formatter
-
-Use `make help` to list targets.
+- `make run-pass` – execute batch pass config with CSV/JSON/HTML outputs
+- `make run-fail` – execute batch fail config with CSV/JSON/HTML outputs
