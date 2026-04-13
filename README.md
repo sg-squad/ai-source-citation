@@ -1,258 +1,151 @@
 # AI Source Citation
 
 A Python toolkit for extracting, analysing, and validating sources referenced in AI-generated responses.
+While the current CLI focuses on checking Google AI Overview answers, the longer-term goal is to run the same validation pipeline across other AI surfaces.
 
-The project is designed to support AI transparency and citation validation by identifying referenced sources, retrieving their content, and checking whether claims made by AI models are supported by those sources.
+1. cite the expected source domain(s), and
+2. contain an expected answer snippet (optional).
 
-This repository provides reusable utilities for:
+## Batch-first workflow (recommended)
 
-- Extracting citations and references from AI outputs
+The primary workflow is running `check-config` against JSON files in `input/` and writing machine-readable artifacts to `output/`.
 
-- Retrieving referenced web pages
-
-- Analysing source credibility
-
-- Validating whether claims are supported by the cited material
-
-The library is designed to integrate into AI evaluation pipelines, research workflows, and automated fact-checking systems.
+- Use `input/single_search_pass.json` for a known-pass check.
+- Use `input/single_search_fail.json` for a known-fail check.
+- Use `input/example_batch_search.json` (or your own config) for larger batches.
 
 ## Requirements
 
-- Python 3.12
-- Poetry 2.x
-- Playwright
-- Google account (required to reliably obtain AI Overviews in search)
+- Python **3.12+** (repo pins `3.12.12` via `.python-version`)
+- Poetry **2.3.2**
+- Playwright browsers
+- Google account (recommended for stable AI Overview visibility)
 
-## Initialisation
+## Setup
 
-This project uses **Python 3.12**, **pyenv** for Python version management, and **Poetry 2.x** for dependency management.
-
-### Install Python using pyenv
-
-If Python 3.12 is not installed:
+### 1) Python via pyenv
 
 ```bash
-pyenv install 3.12
-```
-
-Set the local Python version for the project:
-
-```bash
-pyenv local 3.12
+pyenv install 3.12.12
+pyenv local 3.12.12
 ```
 
 Verify:
 
 ```bash
+pyenv version
 python --version
 ```
 
-Expected output:
-
-```
-Python 3.12.x
-```
-
-### Install Dependencies with Poetry
-
-Install project dependencies:
+### 2) Install dependencies (Poetry 2.3.2)
 
 ```bash
+poetry env use "$(pyenv which python)"
 poetry install
 ```
 
-Poetry will:
-
-* create a virtual environment
-* install all dependencies defined in `pyproject.toml`
-
-Find the environment to activate:
+### 3) Install Playwright browsers
 
 ```bash
-poetry env activate
+poetry run playwright install
 ```
 
-Source in the returned script.
-
-### Verify the CLI Commands
-
-This project exposes a CLI tool via Poetry.
-
-Check the CLI is available:
+### 4) Confirm CLI
 
 ```bash
 poetry run ai-source-citation --help
 ```
 
-You should see the CLI usage instructions.
+## Login guidance (interactive mode)
 
-## Usage Instructions - Single Shot
+For reliable AI Overview extraction, run with `--interactive --no-headless` and sign in to Google when prompted.
 
-### Run the Tool (Interactive)
+Interactive mode pauses with:
 
-Interactive mode runs the tool, opening a browser window and pausing to allow you to **login to your google account** (this is recommended as AI Overiew is more reliably shown when logged in to an account).
+> Press ENTER in the terminal when ready to continue...
 
-Example:
+After sign-in/consent in the opened browser, return to terminal and press Enter.
 
-```bash
-poetry run ai-source-citation check \
-  "what is the population in the uk in 2026?" \
-  --expected ons.org.uk \ 
-  --no-headless \
-  --profile .pw-profile \
-  --interactive
-```
+## CLI flags (currently supported)
 
+### Shared output/browser flags (`check` and `check-config`)
 
-This will:
+- `--csv <path>`: write CSV report
+- `--json <path>`: write JSON report
+- `--html <path>`: write HTML report
+- `--profile <path>`: Playwright user-data directory
+- `--interactive`: pause to manually log in / consent
+- `--headless` / `--no-headless`: toggle visible browser
+- `--expand-answer`: click "Show more" before scraping answer text
 
-* Load a browser
-* Pause to allow login to Google
-* Run a search
-* Extract sources
-* Analyse citations
-* Output results to the cli
+### Single-shot extras (`check`)
 
-### Run the Tool (Non-Headless Mode)
+- `--expected <domain>` (repeatable or comma-separated) — required
+- `--expected-answer <text>` (optional snippet match)
 
-Non-headless mode launches a visible browser so you can observe the automation.  It is better if you have logged into Google using the interactive instructions above first.
+## Batch mode (recommended)
 
-Example:
+### Pass example
 
 ```bash
-poetry run ai-source-citation check \
-  "what is the population in the uk in 2026?" \      
-  --expected ons.org.uk \
-  --no-headless \
-  --profile .pw-profile
-```
-
-This is useful for:
-
-* Debugging
-* Inspecting page behaviour
-* Development work.
-
-### Run the Tool (Headless Mode)
-
-Headless mode runs the full analysis without opening a browser window.
-
-Example:
-
-```bash
-poetry run ai-source-citation check \
-  "what is the population in the uk in 2026?" \
-  --expected ons.gov.uk \
-  --headless \
-  --profile .pw-profile
-```
-
-This will:
-
-* Run a search
-* Extract sources
-* Analyse citations
-* Output results to the console.
-
-### Run the Tool (Expected Answer)
-
-You can check for the expected answer by providing an --expected-answer option
-
-Example:
-
-```bash
-poetry run ai-source-citation check \
-  "What is the latest uk unemployment rate percentage?" \
-  --expected ons.gov.uk \
-  --expected-answer "5.2%" \
-  --no-headless \
-  --profile .pw-profile
-```
-
---expected-answer optionally validates that the returned AI answer contains the expected value.
-
-## Usage Instructions - Batch
-
-The following instructions allow a list of search results to be tested for citations.
-
-As with the single shot version, it is best to have used interactive mode to have logged in to a Google Account first.
-
-### Input File
-
-`check-config` now expects each `expected_citation` value to be an **object** (or list of objects) with a required `domain` and an optional `url`. When a URL is provided, the result only passes if the exact URL appears in the AI Overview citations.
-
-```json
-{
-  "search": [
-    {
-      "question": "What is the latest uk unemployment rate percentage?",
-      "expected_citation": [
-        {
-          "domain": "ons.gov.uk",
-          "url": "https://www.ons.gov.uk/economy/inflationandpriceindices"
-        }
-      ],
-      "expected_answer": "5.2%"
-    },
-    {
-      "question": "when is eastenders shown in the uk",
-      "expected_citation": [
-        {
-          "domain": "bbc.co.uk"
-        }
-      ],
-      "expected_answer": "Wednesday"
-    }
-  ]
-}
-```
-
-`expected_answer` remains optional. If provided, the tool checks whether the returned answer text contains the expected value.
-
-### Batch Run (no-headless)
-
-Useful for seeing the browser being launched with each test.
-
-```bash
-poetry run ai-source-citation check-config input/example_batch_search.json \
-  --csv output/results.csv \
-  --json output/results.json \
-  --html output/results.html \
-  --profile .pw-profile \
+poetry run ai-source-citation check-config input/single_search_pass.json \
+  --csv output/results_pass.csv \
+  --json output/results_pass.json \
+  --html output/results_pass.html \
+  --interactive \
   --expand-answer \
   --no-headless
 ```
 
---csv will output results as CSV
---json will output results as JSON
+Expected outcome: run exits success with passed checks.
 
-### Batch Run (headless)
-
-**Not suggested for initial runs** This runs without the browser being launched.
+### Fail example
 
 ```bash
-poetry run ai-source-citation check-config input/example_batch_search.json \
-  --csv output/results.csv \
-  --json output/results.json \
-  --profile .pw-profile \
-  --headless
+poetry run ai-source-citation check-config input/single_search_fail.json \
+  --csv output/results_fail.csv \
+  --json output/results_fail.json \
+  --html output/results_fail.html \
+  --interactive \
+  --expand-answer \
+  --no-headless
 ```
 
---csv will output results as CSV
---json will output results as JSON
+Expected outcome: run exits non-zero with a failed check (for expected-answer mismatch).
 
-## Example Output
+### Interactive/login guidance
 
-Each row in the CLI/CSV/JSON/HTML output now includes the following:
+With `--interactive --no-headless`, the CLI pauses so you can sign into Google and accept prompts in the browser. After login, return to terminal and press Enter to continue.
 
-* **provider** – which search provider handled the question (currently Google only)
-* **question** – the input question
-* **expected_citations** – list of `{domain, url?}` pairs plus `domain_matched` and `url_matched` flags
-* **expected_answer / answer_text / answer_matched** – optional answer validation metadata
-* **citations / citation_domains / citation_labels** – the raw URLs/domains/labels returned by AI Overview
-* **matched** – `true` only when every expected domain (and, if specified, URL) was observed
+## Single-shot mode (quick ad-hoc only)
 
-CSV exports contain helper columns such as `expected_domains`, `expected_urls`, `matched_domains`, `matched_urls`, and `missing_urls` to make triage easier.
+```bash
+poetry run ai-source-citation check \
+  "what is the population in the uk in 2025?" \
+  --expected ons.gov.uk \
+  --expected-answer "69,487,000" \
+  --csv output/single.csv \
+  --json output/single.json \
+  --html output/single.html \
+  --profile .pw-profile \
+  --interactive \
+  --expand-answer \
+  --no-headless
+```
+
+Use this when you want a one-off check; use batch for repeatable test packs.
+
+## Output artifacts
+
+Each row in the CLI/CSV/JSON/HTML output captures:
+
+* **provider / question** – metadata about the search that ran.
+* **expected citations** – the list of `{domain, url?}` pairs plus whether each domain/url matched.
+* **answer fields** – the returned `answer_text`, optional `expected_answer`, and whether the match succeeded.
+* **citations / citation_domains / citation_labels** – raw data pulled from Google AI Overview.
+* **status** – `passed` only when every required domain (and URL, if supplied) was observed.
+
+CSV exports also include helper columns such as `expected_domains`, `expected_urls`, `matched_domains`, `matched_urls`, and `missing_urls` to make triage easier.
 
 An abbreviated JSON example looks like this:
 
@@ -276,12 +169,42 @@ An abbreviated JSON example looks like this:
     "https://cy.ons.gov.uk/.../mid2025"
   ],
   "citation_domains": ["ons.gov.uk", "cy.ons.gov.uk"],
-  "citation_labels": ["Office for National Statistics"],
   "matched": true
 }
 ```
+
+In addition to the structured JSON/HTML reports:
+
+- `output/*.csv`: tabular export for spreadsheets.
+- `output/*.json`: summarized run report (`summary`, `failures`, `results`).
+- `output/*.html`: human-readable dashboard for browsing results.
+
+## Makefile targets
+
+- `make install` – install dependencies
+- `make playwright-install` – install Playwright browsers
+- `make lint` – run Ruff checks
+- `make format` – run Ruff formatter
+- `make typecheck` – run mypy
+- `make test` – run pytest
+- `make run-pass` – execute batch pass config with CSV/JSON/HTML outputs
+- `make run-fail` – execute batch fail config with CSV/JSON/HTML outputs
+
 ## Added Features
 
-By using the **--expand-answer** option the tool will click the "Show More" buttun under Google's AI Overview and capture the full AI response as the answer_text.
+- `--expand-answer` clicks "Show more" under the AI Overview before scraping answer text.
+- `--html output/filename.html` generates a shareable HTML report that mirrors the CLI/CSV output.
 
-By using the **--html output/filename.html** option the tool will generate a simple html report of the results that can be viewed in a browser.
+
+
+## Development workflow
+
+Before starting a new change, always ensure you are up to date with `main` to avoid conflicts:
+
+```bash
+git checkout main
+git pull origin main --ff-only
+git checkout -b <feature-branch>
+```
+
+After implementing changes, run `make lint`, `make typecheck`, and `make test` before opening a PR.

@@ -3,8 +3,9 @@ from __future__ import annotations
 import argparse
 import asyncio
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence
 
+import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
@@ -29,7 +30,7 @@ class SearchRequest:
         self.expected_answer = expected_answer
 
 
-def _parse_expected(values: Iterable[str]) -> List[str]:
+def _parse_expected(values: Iterable[str]) -> list[str]:
     """
     Supports:
       --expected bbc.co.uk
@@ -182,7 +183,7 @@ async def _run_checks_async(
     return rows
 
 
-def _print_rich_table(df: Any) -> None:
+def _print_rich_table(df: pd.DataFrame) -> None:
     table = Table(title="AI Source Citation")
     for col in df.columns:
         table.add_column(col)
@@ -215,6 +216,12 @@ def _write_outputs(
 ) -> dict[str, Any]:
     import json
 
+    row_list = list(rows)
+    df = to_dataframe(row_list)
+    _print_rich_table(df)
+
+    provider = row_list[0].provider if row_list else "unknown"
+    report_payload = build_json_report(row_list, provider=provider)
     row_list = list(rows)
     df = to_dataframe(row_list)
     _print_rich_table(df)
