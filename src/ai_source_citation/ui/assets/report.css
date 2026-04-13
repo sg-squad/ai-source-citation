@@ -193,6 +193,9 @@ details[open] > .result-summary::before {
   border-radius: 999px;
   padding: 0.25rem 0.65rem;
   font-size: 0.9rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .empty-state {
