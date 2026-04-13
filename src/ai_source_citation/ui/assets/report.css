@@ -195,7 +195,8 @@ details[open] > .result-summary::before {
   font-size: 0.9rem;
   max-width: 100%;
   overflow-wrap: anywhere;
-  word-break: break-word;
+  word-break: break-all;
+  white-space: normal;
 }
 
 .empty-state {
