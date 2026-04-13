@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Tuple
+from typing import Literal, Optional
 
 ProviderName = Literal["google"]  # extend later
 
@@ -10,6 +10,20 @@ ProviderName = Literal["google"]  # extend later
 class Citation:
     url: str
     domain: str
+
+
+@dataclass(frozen=True)
+class ExpectedCitation:
+    domain: str
+    url: str | None = None
+
+
+@dataclass(frozen=True)
+class ExpectedCitationResult:
+    domain: str
+    url: str | None
+    domain_matched: bool
+    url_matched: bool | None
 
 
 @dataclass(frozen=True)
@@ -28,7 +42,7 @@ class AiAnswer:
 class CheckResultRow:
     provider: str
     question: str
-    expected_sources: tuple[str, ...]
+    expected_citations: tuple[ExpectedCitationResult, ...]
     expected_answer: str | None
     answer_text: str
     answer_matched: bool | None
@@ -36,4 +50,3 @@ class CheckResultRow:
     citation_domains: tuple[str, ...]
     citation_labels: tuple[str, ...]
     matched: bool
-    matched_sources: tuple[str, ...]

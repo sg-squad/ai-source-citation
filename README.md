@@ -179,33 +179,35 @@ As with the single shot version, it is best to have used interactive mode to hav
 
 ### Input File
 
-The following is an example file of searches and exected citations.
+`check-config` now expects each `expected_citation` value to be an **object** (or list of objects) with a required `domain` and an optional `url`. When a URL is provided, the result only passes if the exact URL appears in the AI Overview citations.
 
 ```json
 {
   "search": [
     {
       "question": "What is the latest uk unemployment rate percentage?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk",
+          "url": "https://www.ons.gov.uk/economy/inflationandpriceindices"
+        }
+      ],
       "expected_answer": "5.2%"
     },
     {
-      "question": "What is the latest official figure for inflation in the uk?",
-      "expected_citation": "ons.gov.uk"
-    },
-    {
-      "question": "How many alcohol related deaths were there in 2023?",
-      "expected_citation": "ons.gov.uk"
-    },
-    {
       "question": "when is eastenders shown in the uk",
-      "expected_citation": "bbc.co.uk"
+      "expected_citation": [
+        {
+          "domain": "bbc.co.uk"
+        }
+      ],
+      "expected_answer": "Wednesday"
     }
   ]
 }
 ```
 
-expected_answer is optional. When provided, the tool will check whether the AI response contains the expected answer text.
+`expected_answer` remains optional. If provided, the tool checks whether the returned answer text contains the expected value.
 
 ### Batch Run (no-headless)
 
@@ -241,98 +243,43 @@ poetry run ai-source-citation check-config input/example_batch_search.json \
 
 ## Example Output
 
-The output is displayed as a table with the following elements:
+Each row in the CLI/CSV/JSON/HTML output now includes the following:
 
-**provider** - Which search is analysed (initially only Google is supported)
+* **provider** – which search provider handled the question (currently Google only)
+* **question** – the input question
+* **expected_citations** – list of `{domain, url?}` pairs plus `domain_matched` and `url_matched` flags
+* **expected_answer / answer_text / answer_matched** – optional answer validation metadata
+* **citations / citation_domains / citation_labels** – the raw URLs/domains/labels returned by AI Overview
+* **matched** – `true` only when every expected domain (and, if specified, URL) was observed
 
-**question** - the question analysed
+CSV exports contain helper columns such as `expected_domains`, `expected_urls`, `matched_domains`, `matched_urls`, and `missing_urls` to make triage easier.
 
-**expected_sources** - the sources that are expected to be cited, those selected with the --expected flag
-
-**answer_text** - the scraped response returned by the search
-
-**citations** - the citations URLs returned alongside the associated search 
-
-**citation_domains** - the top level domain associated with the citations (e.g ons.gov.uk)
-
-**citation_labels** - the labels associated with the citations extracted from the browser (e.g Office for National Statistics)
-
-**matched** - was AI Overview found and was the expected citation returned. (True or False)
-
-**matched_sources** - the expected sources that matched in the citations
-
-**expected_answer** – optional expected value to check in the AI answer
-
-**answer_matched** – whether the AI answer text contains the expected answer (True / False / null)
-
-### Single shot at the CLI
-
-This will return a tabular output
-
-### Batch mode at the CLI
-
-If the --csv flag is used a CSV file will be written containing the results.
-
-#### CSV Output Headings
-```bash
-provider,question,expected_sources,expected_answer,answer_text,answer_matched,citations,citation_domains,citation_labels,matched,matched_sources
-```
-
-If the --json flag is used a JSON file will be written containing the results.
-
-#### Example JSON Output
+An abbreviated JSON example looks like this:
 
 ```json
-[
-  {
-    "provider": "google",
-    "question": "What is the latest uk unemployment rate percentage?",
-    "expected_sources": "ons.gov.uk",
-    "expected_answer": "5.2%",
-    "answer_text": "The UK unemployment rate for October to December 2025 was 5.2%. This rate, representing 1.88 million people aged 16 and over, is the highest level since 2021. Data released in February 2026 shows an increase in unemployment of 331,000 compared to the previous year. The House of Commons Library +2",
-    "answer_matched": true,
-    "citations": "...https://www.ons.gov.uk&quot;\nhttps://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment#:~:text\\u003dUnemployment%20rate%20(aged%2016%20and\nhttps://encrypted-tbn0.gstatic.com/images?q\\u003dtbn:ANd9GcQWWGtZDUF7R3LsMGLoUAa8xvrreJxS516IFj0FqTXNdLwOpmb6&quot;\nhttps://www.ons.gov.uk/employmentandlabourmarket/peoplenotinwork/unemployment&quot;\n...",
-    "citation_domains": "..ons.gov.uk&quot;, ons.gov.uk, ...",
-    "citation_labels": "The House of Commons Library",
-    "matched": true,
-    "matched_sources": "ons.gov.uk"
-  },
-  {
-    "provider": "google",
-    "question": "What is the latest official figure for inflation in the uk?",
-    "expected_sources": "ons.gov.uk",
-    "answer_text": "The UK annual inflation rate, measured by the Consumer Prices Index (CPI), was 3.0% in January 2026, according to the Office for National Statistics. This is a decrease from 3.4% in December 2025, driven by lower prices for transport and food. The Office for National Statistics (CPIH) (including owner occupiers' housing costs) was 3.2% in January 2026. Office for National Statistics +2",
-    "citations": "https://encrypted-tbn0.gstatic.com/faviconV2?url\\u003dhttps://www.ons.gov.uk\\u0026client\\u003dAIM\\u0026size\\u003d128\\u0026type\\u003dFAVICON\\u0026fallback_opts\\u003dTYPE\nhttps://www.ons.gov.uk&quot;\nhttps://www.ons.gov.uk/economy/inflationandpriceindices#:~:text\\u003dCPIH%20ANNUAL%20RATE%2000:%20ALL\nhttps://encrypted-tbn0.gstatic.com/images?q\\u003dtbn:ANd9GcQWWGtZDUF7R3LsMGLoUAa8xvrreJxS516IFj0FqTXNdLwOpmb6&quot;\nhttps://www.ons.gov.uk/economy/inflationandpriceindices&quot;\nhttps://www.google.com&quot;\nhttps://encrypted-tbn1.gstatic.com/faviconV2?url\\u003dhttps://commonslibrary.parliament.uk\\u0026client\\u003dAIM\\u0026size\\u003d128\\u0026type\\u003dFAVICON\\u0026fallback_opts\\u003dTYPE\nhttps://commonslibrary.parliament.uk&quot;\nhttps://commonslibrary.parliament.uk/research-briefings/sn02792/#:~:text\\u003dLatest%20inflation%20data\nhttps://encrypted-tbn0.gstatic.com/images?q\\u003dtbn:ANd9GcSBdCwc-0eNjUUsUdj9sjx_6DVOYzQ5BpPEBtkQt5YBWJKPo8tv&quot;\nhttps://commonslibrary.parliament.uk/research-briefings/sn02792/&quot;\nhttps://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/december2025#:~:text\\u003dImage%20.csv%20.xls-\nhttps://encrypted-tbn0.gstatic.com/images?q\\u003dtbn:ANd9GcQW6LTfbhxMK32_YtY1th1ofF_gKICmdboxe8KLOM2c5X_BgKnr&quot;\nhttps://www.ons.gov.uk/economy/inflationandpriceindices/bulletins/consumerpriceinflation/december2025&quot;",
-    "citation_domains": "encrypted-tbn0.gstatic.com, ons.gov.uk&quot;, ons.gov.uk, encrypted-tbn0.gstatic.com, ons.gov.uk, google.com&quot;, encrypted-tbn1.gstatic.com, commonslibrary.parliament.uk&quot;, commonslibrary.parliament.uk, encrypted-tbn0.gstatic.com, commonslibrary.parliament.uk, ons.gov.uk, encrypted-tbn0.gstatic.com, ons.gov.uk",
-    "citation_labels": "Office for National Statistics",
-    "matched": true,
-    "matched_sources": "ons.gov.uk"
-  },
-  {
-    "provider": "google",
-    "question": "How many alcohol related deaths were there in 2023?",
-    "expected_sources": "ons.gov.uk",
-    "answer_text": "In 2023, there were 10,473 deaths from alcohol-specific causes registered in the UK, marking the highest number on record and a 4% increase from 2022. The death rate was 15.9 per 100,000 people, with men being twice as likely as women to die from these causes. Office for National Statistics +2",
-    "citations": "https://encrypted-tbn0.gstatic.com/faviconV2?url\\u003dhttps://www.ons.gov.uk\\u0026client\\u003dAIM\\u0026size\\u003d128\\u0026type\\u003dFAVICON\\u0026fallback_opts\\u003dTYPE\nhttps://www.ons.gov.uk&quot;\n...",
-    "citation_domains": "encrypted-tbn0.gstatic.com, ons.gov.uk&quot;, ons.gov.uk, e...",
-    "citation_labels": "Office for National Statistics",
-    "matched": true,
-    "matched_sources": "ons.gov.uk"
-  },
-  {
-    "provider": "google",
-    "question": "when is eastenders shown in the uk",
-    "expected_sources": "bbc.co.uk",
-    "answer_text": "EastEnders typically airs Monday to Thursday at 7:30 pm on BBC One in the UK. Episodes are also available to stream on BBC iPlayer at 6:00 am from Monday to Thursday, allowing viewers to watch early. Schedule changes can occur due to sports or special events. Facebook +6",
-    "citations": "...https://www.bbc.co.uk/programmes/b006m86d/broadcasts/upcoming&quot;",
-    "citation_domains": "... bbc.co.uk&quot;, bbc.co.uk, encrypted-tbn1.gstatic.com, bbc.co.uk",
-    "citation_labels": "Facebook",
-    "matched": true,
-    "matched_sources": "bbc.co.uk"
-  }
-]
+{
+  "provider": "google",
+  "question": "what is the population in the uk in 2025?",
+  "expected_citations": [
+    {
+      "domain": "ons.gov.uk",
+      "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/bulletins/provisionalpopulationestimatefortheuk/mid2025",
+      "domain_matched": true,
+      "url_matched": true
+    }
+  ],
+  "expected_answer": "69,487,000",
+  "answer_text": "The provisional UK population for mid-2025 ...",
+  "answer_matched": true,
+  "citations": [
+    "https://www.ons.gov.uk/.../mid2025",
+    "https://cy.ons.gov.uk/.../mid2025"
+  ],
+  "citation_domains": ["ons.gov.uk", "cy.ons.gov.uk"],
+  "citation_labels": ["Office for National Statistics"],
+  "matched": true
+}
 ```
-
 ## Added Features
 
 By using the **--expand-answer** option the tool will click the "Show More" buttun under Google's AI Overview and capture the full AI response as the answer_text.

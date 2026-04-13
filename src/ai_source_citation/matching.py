@@ -20,7 +20,11 @@ def normalize_expected_source(s: str) -> str:
 
 def domain_matches(expected: str, actual_domain: str, policy: DomainMatchPolicy) -> bool:
     e = normalize_expected_source(expected)
-    a = actual_domain.lower().removeprefix("www.") if policy.case_insensitive else actual_domain.removeprefix("www.")
+    a = (
+        actual_domain.lower().removeprefix("www.")
+        if policy.case_insensitive
+        else actual_domain.removeprefix("www.")
+    )
     if policy.suffix_match:
         return a == e or a.endswith("." + e)
     return a == e

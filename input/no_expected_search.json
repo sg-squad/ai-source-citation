@@ -2,7 +2,11 @@
   "search": [
     {
       "question": "What is my pension age?",
-      "expected_citation": "gov.uk"
+      "expected_citation": [
+        {
+          "domain": "gov.uk"
+        }
+      ]
     }
-    ]
-} 
+  ]
+}
