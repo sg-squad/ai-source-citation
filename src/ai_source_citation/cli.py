@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+
+import pandas as pd
 from pathlib import Path
-from typing import Any, Iterable, List, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence
 
 from rich.console import Console
 from rich.table import Table
 
 from ai_source_citation.providers.google import GoogleAiOverviewProvider
+from ai_source_citation.models import CheckResultRow
 from ai_source_citation.reporting import build_json_report, build_row, to_dataframe
 from ai_source_citation.ui.html_report import open_html_report, write_html_report
 
@@ -28,7 +31,7 @@ class SearchRequest:
         self.expected_answer = expected_answer
 
 
-def _parse_expected(values: Iterable[str]) -> List[str]:
+def _parse_expected(values: Iterable[str]) -> list[str]:
     """
     Supports:
       --expected bbc.co.uk
@@ -144,7 +147,7 @@ async def _run_checks_async(
     profile: Optional[str],
     interactive: bool,
     expand_answer: bool,
-) -> list:
+) -> list[CheckResultRow]:
     provider = GoogleAiOverviewProvider(
         headless=headless,
         user_data_dir=profile,
@@ -152,7 +155,7 @@ async def _run_checks_async(
         expand_answer=expand_answer,
     )
 
-    rows: list = []
+    rows: list[CheckResultRow] = []
     for request in requests:
         answer = await provider.fetch(request.question)
 
@@ -167,7 +170,7 @@ async def _run_checks_async(
     return rows
 
 
-def _print_rich_table(df) -> None:
+def _print_rich_table(df: pd.DataFrame) -> None:
     table = Table(title="AI Source Citation")
     for col in df.columns:
         table.add_column(col)
@@ -200,11 +203,11 @@ def _write_outputs(
 ) -> dict[str, Any]:
     import json
 
-    df = to_dataframe(rows)
+    df = to_dataframe(list(rows))
     _print_rich_table(df)
 
     provider = rows[0].provider if rows else "unknown"
-    report_payload = build_json_report(rows, provider=provider)
+    report_payload = build_json_report(list(rows), provider=provider)
 
     if csv_path:
         csv_path.parent.mkdir(parents=True, exist_ok=True)

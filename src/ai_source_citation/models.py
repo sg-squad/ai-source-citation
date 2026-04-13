@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Tuple
+from typing import Literal, Optional
 
 ProviderName = Literal["google"]  # extend later
 
