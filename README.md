@@ -137,15 +137,47 @@ Use this when you want a one-off check; use batch for repeatable test packs.
 
 ## Output artifacts
 
-- `output/*.csv`: tabular export for spreadsheets
-- `output/*.json`: structured report (`summary`, `failures`, `results`)
-- `output/*.html`: human-readable report
+Each row in the CLI/CSV/JSON/HTML output captures:
 
-Important fields:
+* **provider / question** – metadata about the search that ran.
+* **expected citations** – the list of `{domain, url?}` pairs plus whether each domain/url matched.
+* **answer fields** – the returned `answer_text`, optional `expected_answer`, and whether the match succeeded.
+* **citations / citation_domains / citation_labels** – raw data pulled from Google AI Overview.
+* **status** – `passed` only when every required domain (and URL, if supplied) was observed.
 
-- `matched`: expected citation source(s) were found
-- `answer_matched`: expected answer snippet matched
-- `status`: `passed` or `failed`
+CSV exports also include helper columns such as `expected_domains`, `expected_urls`, `matched_domains`, `matched_urls`, and `missing_urls` to make triage easier.
+
+An abbreviated JSON example looks like this:
+
+```json
+{
+  "provider": "google",
+  "question": "what is the population in the uk in 2025?",
+  "expected_citations": [
+    {
+      "domain": "ons.gov.uk",
+      "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/bulletins/provisionalpopulationestimatefortheuk/mid2025",
+      "domain_matched": true,
+      "url_matched": true
+    }
+  ],
+  "expected_answer": "69,487,000",
+  "answer_text": "The provisional UK population for mid-2025 ...",
+  "answer_matched": true,
+  "citations": [
+    "https://www.ons.gov.uk/.../mid2025",
+    "https://cy.ons.gov.uk/.../mid2025"
+  ],
+  "citation_domains": ["ons.gov.uk", "cy.ons.gov.uk"],
+  "matched": true
+}
+```
+
+In addition to the structured JSON/HTML reports:
+
+- `output/*.csv`: tabular export for spreadsheets.
+- `output/*.json`: summarized run report (`summary`, `failures`, `results`).
+- `output/*.html`: human-readable dashboard for browsing results.
 
 ## Makefile targets
 
@@ -157,3 +189,22 @@ Important fields:
 - `make test` – run pytest
 - `make run-pass` – execute batch pass config with CSV/JSON/HTML outputs
 - `make run-fail` – execute batch fail config with CSV/JSON/HTML outputs
+
+## Added Features
+
+- `--expand-answer` clicks "Show more" under the AI Overview before scraping answer text.
+- `--html output/filename.html` generates a shareable HTML report that mirrors the CLI/CSV output.
+
+
+
+## Development workflow
+
+Before starting a new change, always ensure you are up to date with `main` to avoid conflicts:
+
+```bash
+git checkout main
+git pull origin main --ff-only
+git checkout -b <feature-branch>
+```
+
+After implementing changes, run `make lint`, `make typecheck`, and `make test` before opening a PR.

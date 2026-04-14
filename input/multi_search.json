@@ -2,51 +2,91 @@
   "search": [
     {
       "question": "what is the population in the uk in 2025?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk"
+        }
+      ],
       "expected_answer": "69,487,000"
     },
     {
       "question": "people in england",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk"
+        }
+      ],
       "expected_answer": "69,487,000"
     },
     {
       "question": "What is the latest uk unemployment rate percentage?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk"
+        }
+      ],
       "expected_answer": "5.2%"
     },
     {
       "question": "What is the latest official figure for inflation in the uk?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk"
+        }
+      ],
       "expected_answer": "3.2%"
     },
     {
       "question": "How many alcohol related deaths were there in 2023?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk"
+        }
+      ],
       "expected_answer": "6,666"
     },
     {
       "question": "I have a persistent cough, should I see the doctor?",
-      "expected_citation": "nhs.uk",
+      "expected_citation": [
+        {
+          "domain": "nhs.uk"
+        }
+      ],
       "expected_answer": "Yes, you should see a doctor"
     },
     {
       "question": "how much is basic rate tax?",
-      "expected_citation": "bbc.uk",
+      "expected_citation": [
+        {
+          "domain": "bbc.uk"
+        }
+      ],
       "expected_answer": "20%"
     },
     {
       "question": "What is my pension age?",
-      "expected_citation": "gov.uk"
-    },    
+      "expected_citation": [
+        {
+          "domain": "gov.uk"
+        }
+      ]
+    },
     {
       "question": "when is eastenders shown in the uk",
-      "expected_citation": "bbc.co.uk",
+      "expected_citation": [
+        {
+          "domain": "bbc.co.uk"
+        }
+      ],
       "expected_answer": "Wednesday"
     },
     {
       "question": "what is the winner at 1pm?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk"
+        }
+      ],
       "expected_answer": "69,487,000"
     }
   ]

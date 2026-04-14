@@ -2,7 +2,12 @@
   "search": [
     {
       "question": "what is the population in the uk in 2025?",
-      "expected_citation": "ons.gov.uk",
+      "expected_citation": [
+        {
+          "domain": "ons.gov.uk",
+          "url": "https://www.ons.gov.uk/peoplepopulationandcommunity/populationandmigration/populationestimates/bulletins/provisionalpopulationestimatefortheuk/mid2025"
+        }
+      ],
       "expected_answer": "69,487,000"
     }
   ]

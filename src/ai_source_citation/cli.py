@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-
-import pandas as pd
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
 
+import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
+from ai_source_citation.models import CheckResultRow, ExpectedCitation
 from ai_source_citation.providers.google import GoogleAiOverviewProvider
-from ai_source_citation.models import CheckResultRow
 from ai_source_citation.reporting import build_json_report, build_row, to_dataframe
 from ai_source_citation.ui.html_report import open_html_report, write_html_report
 
@@ -23,11 +22,11 @@ class SearchRequest:
         self,
         *,
         question: str,
-        expected_sources: list[str],
+        expected_citations: list[ExpectedCitation],
         expected_answer: str | None = None,
     ) -> None:
         self.question = question
-        self.expected_sources = expected_sources
+        self.expected_citations = expected_citations
         self.expected_answer = expected_answer
 
 
@@ -56,22 +55,36 @@ def _dedupe_preserve_order(values: Iterable[str]) -> list[str]:
     return result
 
 
-def _coerce_expected_citations(value: Any, *, item_index: int) -> list[str]:
-    if isinstance(value, str):
-        expected = [value.strip()]
-    elif isinstance(value, list) and all(isinstance(v, str) for v in value):
-        expected = [v.strip() for v in value]
+def _coerce_expected_citations(value: Any, *, item_index: int) -> list[ExpectedCitation]:
+    def parse_obj(obj: Any) -> ExpectedCitation:
+        if not isinstance(obj, dict):
+            raise ValueError(
+                f"search[{item_index}].expected_citation entries must be objects with 'domain'"
+            )
+
+        domain = obj.get("domain")
+        if not isinstance(domain, str) or not domain.strip():
+            raise ValueError(
+                f"search[{item_index}].expected_citation.domain must be a non-empty string"
+            )
+
+        url = obj.get("url")
+        if url is not None:
+            if not isinstance(url, str):
+                raise ValueError(
+                    f"search[{item_index}].expected_citation.url must be a string when provided"
+                )
+            url = url.strip() or None
+
+        return ExpectedCitation(domain=domain.strip(), url=url)
+
+    if isinstance(value, dict):
+        expected = [parse_obj(value)]
+    elif isinstance(value, list) and value:
+        expected = [parse_obj(item) for item in value]
     else:
         raise ValueError(
-            f"search[{item_index}].expected_citation must be a string or list of strings"
-        )
-
-    expected = [v for v in expected if v]
-    expected = _dedupe_preserve_order(expected)
-
-    if not expected:
-        raise ValueError(
-            f"search[{item_index}].expected_citation must contain at least one non-empty value"
+            f"search[{item_index}].expected_citation must be an object or non-empty list of objects"
         )
 
     return expected
@@ -117,7 +130,7 @@ def _load_search_requests(config_path: Path) -> list[SearchRequest]:
         if "expected_citation" not in item:
             raise ValueError(f"search[{idx}].expected_citation is required")
 
-        expected_sources = _coerce_expected_citations(
+        expected_citations = _coerce_expected_citations(
             item["expected_citation"],
             item_index=idx,
         )
@@ -129,7 +142,7 @@ def _load_search_requests(config_path: Path) -> list[SearchRequest]:
         requests.append(
             SearchRequest(
                 question=question.strip(),
-                expected_sources=expected_sources,
+                expected_citations=expected_citations,
                 expected_answer=expected_answer,
             )
         )
@@ -161,7 +174,7 @@ async def _run_checks_async(
 
         row = build_row(
             answer,
-            expected_sources=request.expected_sources,
+            expected_citations=request.expected_citations,
             expected_answer=request.expected_answer,
         )
 
@@ -194,7 +207,7 @@ def _print_run_summary(summary: dict[str, int]) -> None:
 
 
 def _write_outputs(
-    rows: Sequence[Any],
+    rows: Sequence[CheckResultRow],
     *,
     csv_path: Path | None,
     json_path: Path | None,
@@ -203,11 +216,18 @@ def _write_outputs(
 ) -> dict[str, Any]:
     import json
 
-    df = to_dataframe(list(rows))
+    row_list = list(rows)
+    df = to_dataframe(row_list)
     _print_rich_table(df)
 
-    provider = rows[0].provider if rows else "unknown"
-    report_payload = build_json_report(list(rows), provider=provider)
+    provider = row_list[0].provider if row_list else "unknown"
+    report_payload = build_json_report(row_list, provider=provider)
+    row_list = list(rows)
+    df = to_dataframe(row_list)
+    _print_rich_table(df)
+
+    provider = row_list[0].provider if row_list else "unknown"
+    report_payload = build_json_report(row_list, provider=provider)
 
     if csv_path:
         csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -336,7 +356,7 @@ def main(argv: list[str] | None = None) -> int:
         requests = [
             SearchRequest(
                 question=question,
-                expected_sources=expected_sources,
+                expected_citations=[ExpectedCitation(domain=src) for src in expected_sources],
                 expected_answer=args.expected_answer.strip() if args.expected_answer else None,
             )
         ]

@@ -126,6 +126,21 @@
           </section>
 
           <section class="detail-block">
+            <h3>Expected URLs</h3>
+            ${renderList(result.expected_urls || [])}
+          </section>
+
+          <section class="detail-block">
+            <h3>Matched URLs</h3>
+            ${renderList(result.matched_urls || [])}
+          </section>
+
+          <section class="detail-block">
+            <h3>Missing URLs</h3>
+            ${renderList(result.missing_urls || [])}
+          </section>
+
+          <section class="detail-block">
             <h3>Citation domains</h3>
             ${renderList(result.citation_domains || [])}
           </section>

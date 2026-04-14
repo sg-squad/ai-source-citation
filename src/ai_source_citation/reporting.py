@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import re
-
 from datetime import datetime, timezone
 from typing import Any, Sequence
+
 import pandas as pd
 
-from ai_source_citation.models import AiAnswer, CheckResultRow
+from ai_source_citation.models import (
+    AiAnswer,
+    CheckResultRow,
+    ExpectedCitation,
+    ExpectedCitationResult,
+)
 from ai_source_citation.matching import find_matches, normalize_expected_source
 
 
@@ -27,16 +32,6 @@ def _answer_matches(answer_text: str | None, expected_answer: str | None) -> boo
 
 
 def _label_matches_expected(expected: str, label: str) -> bool:
-    """
-    Loose matching between an expected source and a citation chip label.
-
-    Examples:
-      expected: bbc.co.uk
-      label: BBC
-
-      expected: ons.gov.uk
-      label: Office for National Statistics
-    """
     e = normalize_expected_source(expected)
     label_normalized = label.strip().lower()
 
@@ -73,13 +68,22 @@ def _failure_reason(row: CheckResultRow) -> str:
     if row.answer_text and row.answer_text.startswith("BLOCKED"):
         return row.answer_text
 
-    source_failed = not row.matched
+    domain_failed = any(not item.domain_matched for item in row.expected_citations)
+    url_failed = any(item.url_matched is False for item in row.expected_citations)
     answer_failed = row.answer_matched is False
 
-    if source_failed and answer_failed:
+    if domain_failed and url_failed and answer_failed:
+        return "domains, URLs, and answer did not match expected"
+    if domain_failed and url_failed:
+        return "domains and URLs did not match expected"
+    if domain_failed and answer_failed:
         return "sources and answer did not match expected"
-    if source_failed:
+    if url_failed and answer_failed:
+        return "URLs and answer did not match expected"
+    if domain_failed:
         return "sources did not match expected"
+    if url_failed:
+        return "URLs did not match expected"
     if answer_failed:
         return "answer did not match expected"
 
@@ -102,7 +106,15 @@ def _row_to_json_record(row: CheckResultRow) -> dict[str, Any]:
     return {
         "provider": row.provider,
         "question": row.question,
-        "expected_sources": list(row.expected_sources),
+        "expected_citations": [
+            {
+                "domain": item.domain,
+                "url": item.url,
+                "domain_matched": item.domain_matched,
+                "url_matched": item.url_matched,
+            }
+            for item in row.expected_citations
+        ],
         "expected_answer": row.expected_answer,
         "answer_text": row.answer_text,
         "answer_matched": row.answer_matched,
@@ -110,7 +122,6 @@ def _row_to_json_record(row: CheckResultRow) -> dict[str, Any]:
         "citation_domains": list(row.citation_domains),
         "citation_labels": list(row.citation_labels),
         "matched": row.matched,
-        "matched_sources": list(row.matched_sources),
         "status": _result_status(row),
     }
 
@@ -128,8 +139,15 @@ def build_json_report(
             "reason": _failure_reason(row),
             "expected_answer": row.expected_answer,
             "actual_answer": row.answer_text,
-            "expected_sources": list(row.expected_sources),
-            "matched_sources": list(row.matched_sources),
+            "expected_citations": [
+                {
+                    "domain": item.domain,
+                    "url": item.url,
+                    "domain_matched": item.domain_matched,
+                    "url_matched": item.url_matched,
+                }
+                for item in row.expected_citations
+            ],
         }
         for row in rows
         if _result_status(row) == "failed"
@@ -146,9 +164,49 @@ def build_json_report(
     }
 
 
+def _evaluate_expected_citations(
+    expected_citations: Sequence[ExpectedCitation],
+    citation_domains: Sequence[str],
+    citation_labels: Sequence[str],
+    citation_urls: Sequence[str],
+) -> list[ExpectedCitationResult]:
+    matched_by_domain = set(
+        find_matches([citation.domain for citation in expected_citations], citation_domains)
+    )
+    matched_by_label = {
+        normalize_expected_source(citation.domain)
+        for citation in expected_citations
+        if any(_label_matches_expected(citation.domain, label) for label in citation_labels)
+    }
+    url_set = set(citation_urls)
+
+    results: list[ExpectedCitationResult] = []
+    for expected in expected_citations:
+        normalized_domain = normalize_expected_source(expected.domain)
+        domain_matched = (
+            normalized_domain in matched_by_domain or normalized_domain in matched_by_label
+        )
+
+        url_norm = expected.url.strip() if expected.url else None
+        url_matched = None
+        if url_norm:
+            url_matched = url_norm in url_set
+
+        results.append(
+            ExpectedCitationResult(
+                domain=expected.domain,
+                url=url_norm,
+                domain_matched=domain_matched,
+                url_matched=url_matched,
+            )
+        )
+
+    return results
+
+
 def build_row(
     answer: AiAnswer,
-    expected_sources: list[str],
+    expected_citations: list[ExpectedCitation],
     expected_answer: str | None = None,
 ) -> CheckResultRow:
     citation_urls = tuple(c.url for c in answer.citations)
@@ -157,11 +215,23 @@ def build_row(
 
     answer_matched = _answer_matches(answer.answer_text, expected_answer)
 
+    expected_results = _evaluate_expected_citations(
+        expected_citations,
+        citation_domains,
+        citation_labels,
+        citation_urls,
+    )
+
+    matched = all(
+        result.domain_matched and (result.url_matched in (True, None))
+        for result in expected_results
+    )
+
     if getattr(answer, "is_blocked", False):
         return CheckResultRow(
             provider=answer.provider,
             question=answer.question,
-            expected_sources=tuple(expected_sources),
+            expected_citations=tuple(expected_results),
             expected_answer=expected_answer,
             answer_text=f"BLOCKED ({answer.blocked_reason})",
             answer_matched=False if expected_answer is not None else None,
@@ -169,31 +239,12 @@ def build_row(
             citation_domains=tuple(),
             citation_labels=tuple(),
             matched=False,
-            matched_sources=tuple(),
         )
-
-    matched_by_domain = set(find_matches(expected_sources, citation_domains))
-
-    matched_by_label = {
-        normalize_expected_source(exp)
-        for exp in expected_sources
-        if any(_label_matches_expected(exp, label) for label in citation_labels)
-    }
-
-    matched_sources = tuple(
-        s
-        for s in [normalize_expected_source(exp) for exp in expected_sources]
-        if s in matched_by_domain or s in matched_by_label
-    )
-
-    matched = len(set(matched_sources)) == len(
-        {normalize_expected_source(s) for s in expected_sources}
-    )
 
     return CheckResultRow(
         provider=answer.provider,
         question=answer.question,
-        expected_sources=tuple(expected_sources),
+        expected_citations=tuple(expected_results),
         expected_answer=expected_answer,
         answer_text=answer.answer_text,
         answer_matched=answer_matched,
@@ -201,26 +252,35 @@ def build_row(
         citation_domains=citation_domains,
         citation_labels=citation_labels,
         matched=matched,
-        matched_sources=matched_sources,
     )
 
 
 def to_dataframe(rows: list[CheckResultRow]) -> pd.DataFrame:
-    return pd.DataFrame(
-        [
+    frame_rows: list[dict[str, Any]] = []
+    for row in rows:
+        expected_domains = [item.domain for item in row.expected_citations]
+        expected_urls = [item.url for item in row.expected_citations if item.url]
+        matched_domains = [item.domain for item in row.expected_citations if item.domain_matched]
+        matched_urls = [item.url for item in row.expected_citations if item.url_matched]
+        missing_urls = [item.url for item in row.expected_citations if item.url_matched is False]
+
+        frame_rows.append(
             {
-                "provider": r.provider,
-                "question": r.question,
-                "expected_sources": ", ".join(r.expected_sources),
-                "expected_answer": r.expected_answer,
-                "answer_text": r.answer_text,
-                "answer_matched": r.answer_matched,
-                "citations": "\n".join(r.citations),
-                "citation_domains": ", ".join(r.citation_domains),
-                "citation_labels": ", ".join(r.citation_labels),
-                "matched": r.matched,
-                "matched_sources": ", ".join(r.matched_sources),
+                "provider": row.provider,
+                "question": row.question,
+                "expected_domains": ", ".join(expected_domains),
+                "expected_urls": ", ".join(expected_urls),
+                "expected_answer": row.expected_answer,
+                "answer_text": row.answer_text,
+                "answer_matched": row.answer_matched,
+                "citations": "\n".join(row.citations),
+                "citation_domains": ", ".join(row.citation_domains),
+                "citation_labels": ", ".join(row.citation_labels),
+                "matched": row.matched,
+                "matched_domains": ", ".join(matched_domains),
+                "matched_urls": ", ".join(filter(None, matched_urls)),
+                "missing_urls": ", ".join(filter(None, missing_urls)),
             }
-            for r in rows
-        ]
-    )
+        )
+
+    return pd.DataFrame(frame_rows)

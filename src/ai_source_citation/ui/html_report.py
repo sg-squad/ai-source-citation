@@ -33,8 +33,7 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     enriched_results: list[dict[str, Any]] = []
     failure_reason_by_question = {
-        failure.get("question"): failure.get("reason", "check failed")
-        for failure in failures
+        failure.get("question"): failure.get("reason", "check failed") for failure in failures
     }
 
     for result in results:
@@ -44,18 +43,39 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
         answer_ok = answer_matched is not False
         expected_answer = result.get("expected_answer")
         answer_text = result.get("answer_text")
-        expected_sources = result.get("expected_sources", [])
-        matched_sources = result.get("matched_sources", [])
+        expected_citations = result.get("expected_citations", [])
+        expected_domains = [item.get("domain") for item in expected_citations if item.get("domain")]
+        matched_domains = [
+            item.get("domain")
+            for item in expected_citations
+            if item.get("domain_matched") and item.get("domain")
+        ]
+        expected_urls = [item.get("url") for item in expected_citations if item.get("url")]
+        matched_urls = [
+            item.get("url")
+            for item in expected_citations
+            if item.get("url_matched") and item.get("url")
+        ]
+        missing_urls = [
+            item.get("url")
+            for item in expected_citations
+            if item.get("url_matched") is False and item.get("url")
+        ]
         citation_domains = result.get("citation_domains", [])
 
         enriched = dict(result)
         enriched["status"] = "passed" if matched and answer_ok else "failed"
         enriched["failure_reason"] = failure_reason_by_question.get(question, "")
-        enriched["search_url"] = _search_url(str(result.get("provider", run.get("provider", ""))), question)
+        enriched["search_url"] = _search_url(
+            str(result.get("provider", run.get("provider", ""))), question
+        )
         enriched["expected_answer"] = expected_answer or ""
         enriched["answer_text"] = answer_text or ""
-        enriched["expected_sources"] = expected_sources
-        enriched["matched_sources"] = matched_sources
+        enriched["expected_sources"] = expected_domains
+        enriched["matched_sources"] = matched_domains
+        enriched["expected_urls"] = expected_urls
+        enriched["matched_urls"] = matched_urls
+        enriched["missing_urls"] = missing_urls
         enriched["citation_domains"] = citation_domains
         enriched_results.append(enriched)
 

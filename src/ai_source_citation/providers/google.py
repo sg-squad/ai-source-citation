@@ -49,6 +49,7 @@ def _dedupe_keep_order(items: list[str]) -> list[str]:
 
 def _urlencode(q: str) -> str:
     from urllib.parse import quote_plus
+
     return quote_plus(q)
 
 
@@ -255,9 +256,12 @@ class GoogleAiOverviewProvider(SearchProvider):
                     blocked_reason=blocked_reason,
                 )
 
-            ai_text_dom, citation_urls_dom, citation_labels_dom, dom_debug = (
-                await _extract_ai_overview_from_dom(page, html)
-            )
+            (
+                ai_text_dom,
+                citation_urls_dom,
+                citation_labels_dom,
+                dom_debug,
+            ) = await _extract_ai_overview_from_dom(page, html)
 
             await context.close()
             if browser is not None:
@@ -265,8 +269,7 @@ class GoogleAiOverviewProvider(SearchProvider):
 
         if ai_text_dom:
             citations = tuple(
-                Citation(url=u, domain=_normalize_domain(u))
-                for u in citation_urls_dom
+                Citation(url=u, domain=_normalize_domain(u)) for u in citation_urls_dom
             )
             return AiAnswer(
                 provider="google",
@@ -285,7 +288,7 @@ class GoogleAiOverviewProvider(SearchProvider):
             raw_debug={"source": "playwright_dom", **dom_debug},
             citation_labels=tuple(),
         )
-        
+
 
 async def _best_effort_accept_consent(page: Page) -> None:
     candidates = [
@@ -301,6 +304,7 @@ async def _best_effort_accept_consent(page: Page) -> None:
                 return
         except Exception:
             continue
+
 
 async def _extract_ai_overview_source_panel(
     page: Page,
@@ -413,7 +417,7 @@ async def _extract_ai_overview_from_dom(
     debug["visible_url_count"] = str(len(visible_urls))
     debug["hidden_url_count"] = str(len(hidden_urls))
     debug["chip_names"] = ", ".join(chip_labels)
-    
+
     if len(answer_text) > 12000:
         debug["dom_ai_overview_rejected"] = "module too large"
         return None, [], tuple(chip_labels), debug
