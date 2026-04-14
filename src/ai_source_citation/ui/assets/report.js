@@ -82,26 +82,27 @@
     `;
   }
 
-  function renderCitationLinks(links) {
-    if (!links || links.length === 0) {
-      return '<p class="empty-state">None</p>';
-    }
-
-    return `
-      <ul class="chip-list">
-        ${links
-          .map((item) => {
-            const url = escapeHtml(item.url || "");
-            const classes = item.matched ? "chip chip--matched" : "chip";
-            return `<li class="${classes}"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
-          })
-          .join("")}
-      </ul>
-    `;
-  }
 
   function renderCard(result) {
     const statusClass = result.status === "passed" ? "result-card--passed" : "result-card--failed";
+    const citationLinksHtml = (() => {
+      const links = result.citation_links || [];
+      if (!links || !links.length) {
+        return '<p class="empty-state">None</p>';
+      }
+      return `
+        <ul class="chip-list">
+          ${links
+            .map((item) => {
+              const url = escapeHtml(item.url || "");
+              const classes = item.matched ? "chip chip--matched" : "chip";
+              return `<li class="${classes}"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
+            })
+            .join("")}
+        </ul>
+      `;
+    })();
+
     const statusLabel = result.status === "passed" ? "PASS" : "FAIL";
     const reasonHtml = result.status === "failed"
       ? `<p><strong>Failure reason:</strong> ${escapeHtml(result.failure_reason || "check failed")}</p>`
@@ -165,7 +166,7 @@
 
           <section class="detail-block">
             <h3>Citation URLs</h3>
-            ${renderCitationLinks(result.citation_links || [])}
+            ${citationLinksHtml}
           </section>
 
           <section class="detail-block">
