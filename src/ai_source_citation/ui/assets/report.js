@@ -71,6 +71,17 @@
     }  
 
   function renderList(items) {
+    if (!items || items.length === 0) {
+      return '<p class="empty-state">None</p>';
+    }
+
+    return `
+      <ul class="chip-list">
+        ${items.map((item) => `<li class="chip">${escapeHtml(item)}</li>`).join("")}
+      </ul>
+    `;
+  }
+
   function renderCitationLinks(links) {
     if (!links || links.length === 0) {
       return '<p class="empty-state">None</p>';
@@ -85,17 +96,6 @@
             return `<li class="${classes}"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
           })
           .join("")}
-      </ul>
-    `;
-  }
-
-    if (!items || items.length === 0) {
-      return '<p class="empty-state">None</p>';
-    }
-
-    return `
-      <ul class="chip-list">
-        ${items.map((item) => `<li class="chip">${escapeHtml(item)}</li>`).join("")}
       </ul>
     `;
   }
