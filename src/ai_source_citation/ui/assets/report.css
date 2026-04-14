@@ -199,6 +199,17 @@ details[open] > .result-summary::before {
   white-space: normal;
 }
 
+.chip a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chip--matched {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+  font-weight: 600;
+}
+
 .empty-state {
   color: var(--muted);
 }

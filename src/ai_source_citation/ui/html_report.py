@@ -62,6 +62,15 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
             if item.get("url_matched") is False and item.get("url")
         ]
         citation_domains = result.get("citation_domains", [])
+        citation_urls = result.get("citations", [])
+        matched_url_set = {url for url in matched_urls if url}
+        citation_links = [
+            {
+                "url": url,
+                "matched": url in matched_url_set,
+            }
+            for url in citation_urls
+        ]
 
         enriched = dict(result)
         enriched["status"] = "passed" if matched and answer_ok else "failed"
@@ -77,6 +86,7 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
         enriched["matched_urls"] = matched_urls
         enriched["missing_urls"] = missing_urls
         enriched["citation_domains"] = citation_domains
+        enriched["citation_links"] = citation_links
         enriched_results.append(enriched)
 
     return {

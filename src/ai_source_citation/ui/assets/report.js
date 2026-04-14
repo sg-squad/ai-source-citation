@@ -71,6 +71,24 @@
     }  
 
   function renderList(items) {
+  function renderCitationLinks(links) {
+    if (!links || links.length === 0) {
+      return '<p class="empty-state">None</p>';
+    }
+
+    return `
+      <ul class="chip-list">
+        ${links
+          .map((item) => {
+            const url = escapeHtml(item.url || "");
+            const classes = item.matched ? "chip chip--matched" : "chip";
+            return `<li class="${classes}"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
+          })
+          .join("")}
+      </ul>
+    `;
+  }
+
     if (!items || items.length === 0) {
       return '<p class="empty-state">None</p>';
     }
@@ -143,6 +161,11 @@
           <section class="detail-block">
             <h3>Citation domains</h3>
             ${renderList(result.citation_domains || [])}
+          </section>
+
+          <section class="detail-block">
+            <h3>Citation URLs</h3>
+            ${renderCitationLinks(result.citation_links || [])}
           </section>
 
           <section class="detail-block">
