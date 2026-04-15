@@ -83,6 +83,23 @@
   }
 
 
+  function renderUrlList(items) {
+    if (!items || items.length === 0) {
+      return '<p class="empty-state">None</p>';
+    }
+
+    return `
+      <ul class="chip-list">
+        ${items
+          .map((item) => {
+            const url = escapeHtml(item);
+            return `<li class="chip"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
+          })
+          .join("")}
+      </ul>
+    `;
+  }
+
   function renderCard(result) {
     const statusClass = result.status === "passed" ? "result-card--passed" : "result-card--failed";
     const citationLinksHtml = (() => {
@@ -146,17 +163,17 @@
 
           <section class="detail-block">
             <h3>Expected URLs</h3>
-            ${renderList(result.expected_urls || [])}
+            ${renderUrlList(result.expected_urls || [])}
           </section>
 
           <section class="detail-block">
             <h3>Matched URLs</h3>
-            ${renderList(result.matched_urls || [])}
+            ${renderUrlList(result.matched_urls || [])}
           </section>
 
           <section class="detail-block">
             <h3>Missing URLs</h3>
-            ${renderList(result.missing_urls || [])}
+            ${renderUrlList(result.missing_urls || [])}
           </section>
 
           <section class="detail-block">
