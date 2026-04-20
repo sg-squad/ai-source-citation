@@ -213,3 +213,20 @@ details[open] > .result-summary::before {
 .empty-state {
   color: var(--muted);
 }
+
+.chip--health-ok {
+  border-color: var(--success-border);
+}
+
+.chip--health-blocked {
+  border-color: #e0b15d;
+}
+
+.chip--health-failed {
+  border-color: var(--failure-border);
+}
+
+.chip-health {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
