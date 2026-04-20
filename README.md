@@ -77,6 +77,7 @@ After sign-in/consent in the opened browser, return to terminal and press Enter.
 - `--interactive`: pause to manually log in / consent
 - `--headless` / `--no-headless`: toggle visible browser
 - `--expand-answer`: click "Show more" before scraping answer text
+- `--llm-judge <path>`: optional LLM-as-judge config file for answer mismatches
 
 ### Single-shot extras (`check`)
 
@@ -208,3 +209,77 @@ git checkout -b <feature-branch>
 ```
 
 After implementing changes, run `make lint`, `make typecheck`, and `make test` before opening a PR.
+
+
+## LLM as a judge (optional)
+
+You can optionally run an LLM judge for rows where `expected_answer` does **not** match `answer_text`.
+
+```bash
+poetry run ai-source-citation check-config input/single_search_fail.json \
+  --csv output/results_fail.csv \
+  --json output/results_fail.json \
+  --html output/results_fail.html \
+  --expand-answer \
+  --no-headless \
+  --profile .pw-profile \
+  --llm-judge config/llm_judge.example.json
+```
+
+### LLM judge config file
+
+Create a JSON file containing:
+
+```json
+{
+  "provider": "openai",
+  "model": "gpt-5.4-2026-03-05",
+  "prompt_path": "llm_judge.prompt.txt",
+  "response_schema_path": "llm_judge.response.schema.json",
+  "project": "optional-gcp-project-id",
+  "location": "optional-vertex-location"
+}
+```
+
+- `provider`: `openai` or `gemini`
+- `model`: model id for the selected provider
+- `prompt_path`: prompt template file
+- `response_schema_path`: schema/shape the judge must return
+- `project` (optional): GCP project for Gemini Vertex ADC mode
+- `location` (optional): Vertex region for Gemini ADC mode (defaults to `us-central1`)
+
+Relative paths are resolved relative to the config file location.
+
+### Prompt placeholders
+
+The prompt file can include:
+
+- `{{expected_answer}}`
+- `{{actual_answer}}`
+- `{{response_schema}}`
+
+### Judge output fields
+
+When judge runs, JSON/CSV/HTML include:
+
+- `llm_judge.matched`
+- `llm_judge.confidence` (0..1)
+- `llm_judge.reasoning`
+- `llm_judge.provider` and `llm_judge.model`
+
+### Credentials / ADC behavior
+
+- If Gemini/OpenAI API key env vars are present (`GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `OPENAI_API_KEY`), the judge keeps API-key behavior.
+- If no API key env vars are present and provider is `gemini`, the judge uses **Application Default Credentials** via `google.auth.default()`.
+- Gemini ADC project resolution order:
+  1. `project` in LLM judge config
+  2. `GOOGLE_CLOUD_PROJECT`
+  3. `GCP_PROJECT`
+  4. inferred project from ADC
+- Gemini ADC location resolution order:
+  1. `location` in LLM judge config
+  2. `GOOGLE_CLOUD_LOCATION`
+  3. `GOOGLE_CLOUD_REGION`
+  4. `VERTEX_AI_LOCATION`
+  5. fallback `us-central1`
+- Never commit secrets to GitHub.

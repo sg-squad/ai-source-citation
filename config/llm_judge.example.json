@@ -1,0 +1,6 @@
+{
+  "provider": "openai",
+  "model": "gpt-5.4-2026-03-05",
+  "prompt_path": "llm_judge.prompt.txt",
+  "response_schema_path": "llm_judge.response.schema.json"
+}

@@ -1,0 +1,5 @@
+{
+  "matched": "boolean",
+  "confidence": "number_between_0_and_1",
+  "reasoning": "string"
+}

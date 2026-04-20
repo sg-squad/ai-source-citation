@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ai_source_citation.citation_health import CitationHealthChecker
+from ai_source_citation.llm_judge import LlmJudgeService
 from ai_source_citation.models import CheckResultRow, Citation, ExpectedCitation
 from ai_source_citation.providers.google import GoogleAiOverviewProvider
 from ai_source_citation.reporting import build_json_report, build_row, to_dataframe
@@ -162,6 +163,7 @@ async def _run_checks_async(
     profile: Optional[str],
     interactive: bool,
     expand_answer: bool,
+    llm_judge_service: LlmJudgeService | None = None,
 ) -> list[CheckResultRow]:
     provider = GoogleAiOverviewProvider(
         headless=headless,
@@ -195,6 +197,17 @@ async def _run_checks_async(
             expected_citations=request.expected_citations,
             expected_answer=request.expected_answer,
         )
+
+        if (
+            llm_judge_service is not None
+            and request.expected_answer
+            and row.answer_matched is False
+        ):
+            llm_result = await llm_judge_service.judge(
+                expected_answer=request.expected_answer,
+                actual_answer=row.answer_text,
+            )
+            row = replace(row, llm_judge=llm_result)
 
         rows.append(row)
 
@@ -316,6 +329,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Pause after page load so you can sign in manually.",
     )
+    check.add_argument(
+        "--llm-judge",
+        dest="llm_judge",
+        type=Path,
+        default=None,
+        help="Path to LLM judge JSON config file.",
+    )
 
     check_config = sub.add_parser(
         "check-config",
@@ -358,6 +378,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Pause after page load so you can sign in manually.",
     )
+    check_config.add_argument(
+        "--llm-judge",
+        dest="llm_judge",
+        type=Path,
+        default=None,
+        help="Path to LLM judge JSON config file.",
+    )
 
     args = parser.parse_args(argv)
 
@@ -378,6 +405,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         ]
 
+        llm_judge_service = LlmJudgeService.from_file(args.llm_judge) if args.llm_judge else None
+
         rows = asyncio.run(
             _run_checks_async(
                 requests,
@@ -385,6 +414,7 @@ def main(argv: list[str] | None = None) -> int:
                 profile=args.profile,
                 interactive=args.interactive,
                 expand_answer=args.expand_answer,
+                llm_judge_service=llm_judge_service,
             )
         )
 
@@ -404,6 +434,8 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as exc:
             parser.error(str(exc))
 
+        llm_judge_service = LlmJudgeService.from_file(args.llm_judge) if args.llm_judge else None
+
         rows = asyncio.run(
             _run_checks_async(
                 requests,
@@ -411,6 +443,7 @@ def main(argv: list[str] | None = None) -> int:
                 profile=args.profile,
                 interactive=args.interactive,
                 expand_answer=args.expand_answer,
+                llm_judge_service=llm_judge_service,
             )
         )
 

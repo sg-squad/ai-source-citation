@@ -100,6 +100,24 @@
     `;
   }
 
+
+  function renderLlmJudge(result) {
+    const judge = result.llm_judge;
+    if (!judge) {
+      return '<p class="result-meta"><strong>LLM judge:</strong> Not run</p>';
+    }
+
+    return `
+      <section class="detail-block">
+        <h3>LLM judge</h3>
+        <p><strong>Provider/model:</strong> ${escapeHtml(judge.provider || "")}/${escapeHtml(judge.model || "")}</p>
+        <p><strong>Matched:</strong> ${judge.matched ? "true" : "false"}</p>
+        <p><strong>Confidence:</strong> ${escapeHtml(judge.confidence ?? 0)}</p>
+        <p class="code-like"><strong>Reasoning:</strong> ${escapeHtml(judge.reasoning || "")}</p>
+      </section>
+    `;
+  }
+
   function renderCard(result) {
     const statusClass = result.status === "passed" ? "result-card--passed" : "result-card--failed";
     const citationLinksHtml = (() => {
@@ -191,6 +209,8 @@
             <h3>Citation URLs</h3>
             ${citationLinksHtml}
           </section>
+
+          ${renderLlmJudge(result)}
 
           <section class="detail-block">
             <h3>Manual recreation</h3>

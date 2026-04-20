@@ -12,6 +12,7 @@ from ai_source_citation.models import (
     ExpectedCitation,
     ExpectedCitationResult,
 )
+from ai_source_citation.llm_judge import LlmJudgeResult
 from ai_source_citation.matching import (
     find_matches,
     normalize_expected_source,
@@ -138,6 +139,17 @@ def _row_to_json_record(row: CheckResultRow) -> dict[str, Any]:
         "expected_answer": row.expected_answer,
         "answer_text": row.answer_text,
         "answer_matched": row.answer_matched,
+        "llm_judge": (
+            {
+                "provider": row.llm_judge.provider,
+                "model": row.llm_judge.model,
+                "matched": row.llm_judge.matched,
+                "confidence": row.llm_judge.confidence,
+                "reasoning": row.llm_judge.reasoning,
+            }
+            if row.llm_judge is not None
+            else None
+        ),
         "citations": list(row.citations),
         "citation_domains": list(row.citation_domains),
         "citation_labels": list(row.citation_labels),
@@ -246,6 +258,7 @@ def build_row(
     answer: AiAnswer,
     expected_citations: list[ExpectedCitation],
     expected_answer: str | None = None,
+    llm_judge: LlmJudgeResult | None = None,
 ) -> CheckResultRow:
     citation_urls = tuple(c.url for c in answer.citations)
     citation_domains = tuple(c.domain for c in answer.citations)
@@ -274,6 +287,7 @@ def build_row(
             expected_answer=expected_answer,
             answer_text=f"BLOCKED ({answer.blocked_reason})",
             answer_matched=False if expected_answer is not None else None,
+            llm_judge=llm_judge,
             citations=tuple(),
             citation_domains=tuple(),
             citation_labels=tuple(),
@@ -288,6 +302,7 @@ def build_row(
         expected_answer=expected_answer,
         answer_text=answer.answer_text,
         answer_matched=answer_matched,
+        llm_judge=llm_judge,
         citations=citation_urls,
         citation_domains=citation_domains,
         citation_labels=citation_labels,
@@ -322,6 +337,10 @@ def to_dataframe(rows: list[CheckResultRow]) -> pd.DataFrame:
                 "expected_answer": row.expected_answer,
                 "answer_text": row.answer_text,
                 "answer_matched": row.answer_matched,
+                "llm_judge_matched": row.llm_judge.matched if row.llm_judge else None,
+                "llm_judge_confidence": row.llm_judge.confidence if row.llm_judge else None,
+                "llm_judge_reasoning": row.llm_judge.reasoning if row.llm_judge else None,
+                "llm_judge_model": row.llm_judge.model if row.llm_judge else None,
                 "citations": "\n".join(row.citations),
                 "citation_domains": ", ".join(row.citation_domains),
                 "citation_labels": ", ".join(row.citation_labels),
