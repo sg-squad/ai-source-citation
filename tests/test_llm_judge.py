@@ -4,7 +4,13 @@ from pathlib import Path
 from ai_source_citation.llm_judge import LlmJudgeResult, LlmJudgeService
 
 
-def _write_judge_files(tmp_path: Path) -> Path:
+def _write_judge_files(
+    tmp_path: Path,
+    *,
+    provider: str = "openai",
+    project: str | None = None,
+    location: str | None = None,
+) -> Path:
     prompt_path = tmp_path / "prompt.txt"
     schema_path = tmp_path / "schema.json"
     config_path = tmp_path / "judge.json"
@@ -20,10 +26,12 @@ def _write_judge_files(tmp_path: Path) -> Path:
     config_path.write_text(
         json.dumps(
             {
-                "provider": "openai",
+                "provider": provider,
                 "model": "gpt-test",
                 "prompt_path": "prompt.txt",
                 "response_schema_path": "schema.json",
+                **({"project": project} if project is not None else {}),
+                **({"location": location} if location is not None else {}),
             }
         ),
         encoding="utf-8",
@@ -80,3 +88,51 @@ def test_judge_clamps_invalid_confidence(tmp_path: Path) -> None:
 
     assert result.matched is False
     assert result.confidence == 1.0
+
+
+def test_judge_from_file_optional_project_location(tmp_path: Path) -> None:
+    config_path = _write_judge_files(
+        tmp_path,
+        provider="gemini",
+        project="my-gcp-project",
+        location="europe-west2",
+    )
+    service = LlmJudgeService.from_file(config_path)
+
+    assert service.config.provider == "gemini"
+    assert service.config.project == "my-gcp-project"
+    assert service.config.location == "europe-west2"
+
+
+def test_resolve_vertex_project_location_with_config_overrides(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("GOOGLE_CLOUD_PROJECT", "env-project")
+    monkeypatch.setenv("GOOGLE_CLOUD_LOCATION", "us-east4")
+
+    config_path = _write_judge_files(
+        tmp_path,
+        provider="gemini",
+        project="config-project",
+        location="europe-west1",
+    )
+    service = LlmJudgeService.from_file(config_path)
+
+    project, location = service._resolve_vertex_project_location("inferred-project")
+
+    assert project == "config-project"
+    assert location == "europe-west1"
+
+
+def test_resolve_vertex_project_location_with_env_and_fallback(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("GOOGLE_CLOUD_PROJECT", raising=False)
+    monkeypatch.delenv("GCP_PROJECT", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_LOCATION", raising=False)
+    monkeypatch.delenv("GOOGLE_CLOUD_REGION", raising=False)
+    monkeypatch.delenv("VERTEX_AI_LOCATION", raising=False)
+
+    config_path = _write_judge_files(tmp_path, provider="gemini")
+    service = LlmJudgeService.from_file(config_path)
+
+    project, location = service._resolve_vertex_project_location("inferred-project")
+
+    assert project == "inferred-project"
+    assert location == "us-central1"

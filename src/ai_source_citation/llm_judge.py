@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -24,6 +25,8 @@ class LlmJudgeConfig:
     model: str
     prompt_path: str
     response_schema_path: str
+    project: str | None = None
+    location: str | None = None
 
 
 class LlmJudgeService:
@@ -59,6 +62,8 @@ class LlmJudgeService:
             model=payload["model"],
             prompt_path=str(prompt_path),
             response_schema_path=str(schema_path),
+            project=payload.get("project"),
+            location=payload.get("location"),
         )
         return LlmJudgeService(config)
 
@@ -96,6 +101,24 @@ class LlmJudgeService:
             model=self._config.model,
         )
 
+    def _resolve_vertex_project_location(
+        self, inferred_project: str | None
+    ) -> tuple[str | None, str]:
+        project = (
+            self._config.project
+            or os.getenv("GOOGLE_CLOUD_PROJECT")
+            or os.getenv("GCP_PROJECT")
+            or inferred_project
+        )
+        location = (
+            self._config.location
+            or os.getenv("GOOGLE_CLOUD_LOCATION")
+            or os.getenv("GOOGLE_CLOUD_REGION")
+            or os.getenv("VERTEX_AI_LOCATION")
+            or "us-central1"
+        )
+        return project, location
+
     async def _call_openai(self, prompt: str) -> dict[str, Any]:
         try:
             from openai import AsyncOpenAI
@@ -131,7 +154,44 @@ class LlmJudgeService:
                 "Google GenAI SDK not installed. Add 'google-genai' to dependencies to use --llm-judge with provider=gemini."
             ) from exc
 
-        client = genai.Client()
+        gemini_api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+
+        if gemini_api_key or openai_api_key:
+            # Keep existing API-key based behavior when API key env vars are present.
+            client = genai.Client(api_key=gemini_api_key) if gemini_api_key else genai.Client()
+        else:
+            try:
+                import google.auth
+            except ImportError as exc:  # pragma: no cover
+                raise RuntimeError(
+                    "google-auth is required for Gemini ADC mode. Add 'google-auth' dependency."
+                ) from exc
+
+            try:
+                credentials, inferred_project = google.auth.default(
+                    scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                )
+            except Exception as exc:  # noqa: BLE001
+                raise RuntimeError(
+                    "Gemini ADC credentials are unavailable. Configure Application Default Credentials "
+                    "(for example via GOOGLE_APPLICATION_CREDENTIALS or gcloud auth application-default login)."
+                ) from exc
+
+            project, location = self._resolve_vertex_project_location(inferred_project)
+            if not project:
+                raise RuntimeError(
+                    "Gemini ADC mode requires a GCP project. Set config.project, GOOGLE_CLOUD_PROJECT, "
+                    "GCP_PROJECT, or use ADC with an inferred project."
+                )
+
+            client = genai.Client(
+                vertexai=True,
+                project=project,
+                location=location,
+                credentials=credentials,
+            )
+
         response = client.models.generate_content(
             model=self._config.model,
             contents=prompt,

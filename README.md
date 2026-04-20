@@ -235,7 +235,9 @@ Create a JSON file containing:
   "provider": "openai",
   "model": "gpt-5.4-2026-03-05",
   "prompt_path": "llm_judge.prompt.txt",
-  "response_schema_path": "llm_judge.response.schema.json"
+  "response_schema_path": "llm_judge.response.schema.json",
+  "project": "optional-gcp-project-id",
+  "location": "optional-vertex-location"
 }
 ```
 
@@ -243,6 +245,8 @@ Create a JSON file containing:
 - `model`: model id for the selected provider
 - `prompt_path`: prompt template file
 - `response_schema_path`: schema/shape the judge must return
+- `project` (optional): GCP project for Gemini Vertex ADC mode
+- `location` (optional): Vertex region for Gemini ADC mode (defaults to `us-central1`)
 
 Relative paths are resolved relative to the config file location.
 
@@ -263,8 +267,19 @@ When judge runs, JSON/CSV/HTML include:
 - `llm_judge.reasoning`
 - `llm_judge.provider` and `llm_judge.model`
 
-### Credentials
+### Credentials / ADC behavior
 
-- OpenAI uses the OpenAI SDK environment auth (for example `OPENAI_API_KEY`).
-- Gemini uses Application Default Credentials.
+- If Gemini/OpenAI API key env vars are present (`GEMINI_API_KEY`, `GOOGLE_API_KEY`, or `OPENAI_API_KEY`), the judge keeps API-key behavior.
+- If no API key env vars are present and provider is `gemini`, the judge uses **Application Default Credentials** via `google.auth.default()`.
+- Gemini ADC project resolution order:
+  1. `project` in LLM judge config
+  2. `GOOGLE_CLOUD_PROJECT`
+  3. `GCP_PROJECT`
+  4. inferred project from ADC
+- Gemini ADC location resolution order:
+  1. `location` in LLM judge config
+  2. `GOOGLE_CLOUD_LOCATION`
+  3. `GOOGLE_CLOUD_REGION`
+  4. `VERTEX_AI_LOCATION`
+  5. fallback `us-central1`
 - Never commit secrets to GitHub.

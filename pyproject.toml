@@ -17,6 +17,7 @@ typer = "^0.12.3"
 rich = "^13.7.1"
 openai = "^1.100.0"
 google-genai = "^1.31.0"
+google-auth = "^2.49.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
