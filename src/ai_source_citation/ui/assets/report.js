@@ -112,8 +112,14 @@
           ${links
             .map((item) => {
               const url = escapeHtml(item.url || "");
-              const classes = item.matched ? "chip chip--matched" : "chip";
-              return `<li class="${classes}"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a></li>`;
+              const healthLabel = item.status_code !== null && item.status_code !== undefined
+                ? String(item.status_code)
+                : (item.error ? `ERR: ${escapeHtml(item.error)}` : "ERR");
+              const healthClass = item.is_ok
+                ? "chip--health-ok"
+                : (item.is_blocked ? "chip--health-blocked" : "chip--health-failed");
+              const classes = `${item.matched ? "chip chip--matched" : "chip"} ${healthClass}`;
+              return `<li class="${classes}"><a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a> <span class="chip-health">(${healthLabel})</span></li>`;
             })
             .join("")}
         </ul>
@@ -242,6 +248,22 @@
           <div class="metric">
             <div class="metric-label">Failures</div>
             <div class="metric-value">${escapeHtml(summary.checks_failed ?? 0)}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Citations checked</div>
+            <div class="metric-value">${escapeHtml(summary.total_citations_checked ?? 0)}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Healthy citations</div>
+            <div class="metric-value">${escapeHtml(summary.healthy_citations ?? 0)}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Blocked citations</div>
+            <div class="metric-value">${escapeHtml(summary.blocked_citations ?? 0)}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Failed citations</div>
+            <div class="metric-value">${escapeHtml(summary.failed_citations ?? 0)}</div>
           </div>
         </div>
       </header>

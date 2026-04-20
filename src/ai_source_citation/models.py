@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
+from ai_source_citation.citation_health import CitationHealthResult
+
 ProviderName = Literal["google"]  # extend later
 
 
@@ -10,6 +12,7 @@ ProviderName = Literal["google"]  # extend later
 class Citation:
     url: str
     domain: str
+    health: CitationHealthResult | None = None
 
 
 @dataclass(frozen=True)
@@ -49,4 +52,5 @@ class CheckResultRow:
     citations: tuple[str, ...]
     citation_domains: tuple[str, ...]
     citation_labels: tuple[str, ...]
+    citation_health: tuple[CitationHealthResult | None, ...]
     matched: bool

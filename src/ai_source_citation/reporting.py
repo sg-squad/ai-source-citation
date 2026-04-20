@@ -94,6 +94,21 @@ def _failure_reason(row: CheckResultRow) -> str:
     return ""
 
 
+def _build_citation_health_summary(rows: Sequence[CheckResultRow]) -> dict[str, int]:
+    all_health = [item for row in rows for item in row.citation_health if item is not None]
+    total = len(all_health)
+    healthy = sum(1 for item in all_health if item.is_ok)
+    blocked = sum(1 for item in all_health if item.is_blocked)
+    failed = total - healthy - blocked
+
+    return {
+        "total_citations_checked": total,
+        "healthy_citations": healthy,
+        "blocked_citations": blocked,
+        "failed_citations": failed,
+    }
+
+
 def _build_run_summary(rows: Sequence[CheckResultRow]) -> dict[str, int]:
     checks_run = len(rows)
     checks_passed = sum(1 for row in rows if _result_status(row) == "passed")
@@ -103,6 +118,7 @@ def _build_run_summary(rows: Sequence[CheckResultRow]) -> dict[str, int]:
         "checks_run": checks_run,
         "checks_passed": checks_passed,
         "checks_failed": checks_failed,
+        **_build_citation_health_summary(rows),
     }
 
 
@@ -125,6 +141,23 @@ def _row_to_json_record(row: CheckResultRow) -> dict[str, Any]:
         "citations": list(row.citations),
         "citation_domains": list(row.citation_domains),
         "citation_labels": list(row.citation_labels),
+        "citation_health": [
+            (
+                {
+                    "url": item.url,
+                    "final_url": item.final_url,
+                    "status_code": item.status_code,
+                    "is_ok": item.is_ok,
+                    "is_redirect": item.is_redirect,
+                    "is_blocked": item.is_blocked,
+                    "error": item.error,
+                    "response_time_ms": item.response_time_ms,
+                }
+                if item is not None
+                else None
+            )
+            for item in row.citation_health
+        ],
         "matched": row.matched,
         "status": _result_status(row),
     }
@@ -217,6 +250,7 @@ def build_row(
     citation_urls = tuple(c.url for c in answer.citations)
     citation_domains = tuple(c.domain for c in answer.citations)
     citation_labels = tuple(answer.citation_labels)
+    citation_health = tuple(c.health for c in answer.citations)
 
     answer_matched = _answer_matches(answer.answer_text, expected_answer)
 
@@ -243,6 +277,7 @@ def build_row(
             citations=tuple(),
             citation_domains=tuple(),
             citation_labels=tuple(),
+            citation_health=tuple(),
             matched=False,
         )
 
@@ -256,6 +291,7 @@ def build_row(
         citations=citation_urls,
         citation_domains=citation_domains,
         citation_labels=citation_labels,
+        citation_health=citation_health,
         matched=matched,
     )
 
@@ -268,6 +304,14 @@ def to_dataframe(rows: list[CheckResultRow]) -> pd.DataFrame:
         matched_domains = [item.domain for item in row.expected_citations if item.domain_matched]
         matched_urls = [item.url for item in row.expected_citations if item.url_matched]
         missing_urls = [item.url for item in row.expected_citations if item.url_matched is False]
+        health_items = [item for item in row.citation_health if item is not None]
+        health_ok = sum(1 for item in health_items if item.is_ok)
+        health_blocked = sum(1 for item in health_items if item.is_blocked)
+        health_failed = len(health_items) - health_ok - health_blocked
+        health_statuses = [
+            f"{item.url} -> {item.status_code if item.status_code is not None else 'ERR'}"
+            for item in health_items
+        ]
 
         frame_rows.append(
             {
@@ -285,6 +329,11 @@ def to_dataframe(rows: list[CheckResultRow]) -> pd.DataFrame:
                 "matched_domains": ", ".join(matched_domains),
                 "matched_urls": ", ".join(filter(None, matched_urls)),
                 "missing_urls": ", ".join(filter(None, missing_urls)),
+                "citations_checked": len(health_items),
+                "citations_healthy": health_ok,
+                "citations_blocked": health_blocked,
+                "citations_failed": health_failed,
+                "citation_health": "\n".join(health_statuses),
             }
         )
 

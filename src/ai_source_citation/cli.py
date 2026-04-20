@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Iterable, Optional, Sequence
 
@@ -9,7 +10,8 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from ai_source_citation.models import CheckResultRow, ExpectedCitation
+from ai_source_citation.citation_health import CitationHealthChecker
+from ai_source_citation.models import CheckResultRow, Citation, ExpectedCitation
 from ai_source_citation.providers.google import GoogleAiOverviewProvider
 from ai_source_citation.reporting import build_json_report, build_row, to_dataframe
 from ai_source_citation.ui.html_report import open_html_report, write_html_report
@@ -167,10 +169,26 @@ async def _run_checks_async(
         interactive=interactive,
         expand_answer=expand_answer,
     )
+    health_checker = CitationHealthChecker()
 
     rows: list[CheckResultRow] = []
     for request in requests:
         answer = await provider.fetch(request.question)
+
+        health_by_url = await health_checker.check_many(
+            [citation.url for citation in answer.citations]
+        )
+        answer = replace(
+            answer,
+            citations=tuple(
+                Citation(
+                    url=citation.url,
+                    domain=citation.domain,
+                    health=health_by_url.get(citation.url),
+                )
+                for citation in answer.citations
+            ),
+        )
 
         row = build_row(
             answer,
@@ -202,6 +220,11 @@ def _print_run_summary(summary: dict[str, int]) -> None:
     summary_table.add_row("Number of checks run", str(summary["checks_run"]))
     summary_table.add_row("Number of checks passed", str(summary["checks_passed"]))
     summary_table.add_row("Number of checks failed", str(summary["checks_failed"]))
+    if "total_citations_checked" in summary:
+        summary_table.add_row("Total citations checked", str(summary["total_citations_checked"]))
+        summary_table.add_row("Healthy citations", str(summary["healthy_citations"]))
+        summary_table.add_row("Blocked citations", str(summary["blocked_citations"]))
+        summary_table.add_row("Failed citations", str(summary["failed_citations"]))
 
     console.print(summary_table)
 
@@ -216,12 +239,6 @@ def _write_outputs(
 ) -> dict[str, Any]:
     import json
 
-    row_list = list(rows)
-    df = to_dataframe(row_list)
-    _print_rich_table(df)
-
-    provider = row_list[0].provider if row_list else "unknown"
-    report_payload = build_json_report(row_list, provider=provider)
     row_list = list(rows)
     df = to_dataframe(row_list)
     _print_rich_table(df)

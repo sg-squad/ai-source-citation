@@ -65,11 +65,21 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
         ]
         citation_domains = result.get("citation_domains", [])
         citation_urls = result.get("citations", [])
+        citation_health = result.get("citation_health", [])
+        health_by_url = {
+            item.get("url"): item
+            for item in citation_health
+            if isinstance(item, dict) and item.get("url")
+        }
         matched_url_set = {normalize_url_for_match(url) for url in matched_urls if url}
         citation_links = [
             {
                 "url": url,
                 "matched": normalize_url_for_match(url) in matched_url_set,
+                "status_code": health_by_url.get(url, {}).get("status_code"),
+                "is_ok": health_by_url.get(url, {}).get("is_ok", False),
+                "is_blocked": health_by_url.get(url, {}).get("is_blocked", False),
+                "error": health_by_url.get(url, {}).get("error"),
             }
             for url in citation_urls
         ]
