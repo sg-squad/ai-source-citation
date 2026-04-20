@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Iterable
+from urllib.parse import urlsplit, urlunsplit
 
 
 @dataclass(frozen=True)
@@ -51,3 +52,13 @@ def find_matches(
             seen.add(x)
             out.append(x)
     return out
+
+
+def normalize_url_for_match(url: str) -> str:
+    """Normalize URL for equality checks while preserving non-fragment parts."""
+    value = url.strip()
+    if not value:
+        return value
+
+    parts = urlsplit(value)
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, parts.query, ""))

@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus
 
+from ai_source_citation.matching import normalize_url_for_match
+
 ASSETS_DIR = Path(__file__).parent / "assets"
 
 
@@ -63,11 +65,11 @@ def _normalise_results_payload(payload: dict[str, Any]) -> dict[str, Any]:
         ]
         citation_domains = result.get("citation_domains", [])
         citation_urls = result.get("citations", [])
-        matched_url_set = {url for url in matched_urls if url}
+        matched_url_set = {normalize_url_for_match(url) for url in matched_urls if url}
         citation_links = [
             {
                 "url": url,
-                "matched": url in matched_url_set,
+                "matched": normalize_url_for_match(url) in matched_url_set,
             }
             for url in citation_urls
         ]

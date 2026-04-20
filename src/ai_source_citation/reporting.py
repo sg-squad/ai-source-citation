@@ -12,7 +12,11 @@ from ai_source_citation.models import (
     ExpectedCitation,
     ExpectedCitationResult,
 )
-from ai_source_citation.matching import find_matches, normalize_expected_source
+from ai_source_citation.matching import (
+    find_matches,
+    normalize_expected_source,
+    normalize_url_for_match,
+)
 
 
 def _normalize_text(value: str) -> str:
@@ -178,7 +182,7 @@ def _evaluate_expected_citations(
         for citation in expected_citations
         if any(_label_matches_expected(citation.domain, label) for label in citation_labels)
     }
-    url_set = set(citation_urls)
+    normalized_citation_urls = {normalize_url_for_match(url) for url in citation_urls}
 
     results: list[ExpectedCitationResult] = []
     for expected in expected_citations:
@@ -190,7 +194,8 @@ def _evaluate_expected_citations(
         url_norm = expected.url.strip() if expected.url else None
         url_matched = None
         if url_norm:
-            url_matched = url_norm in url_set
+            expected_url_normalized = normalize_url_for_match(url_norm)
+            url_matched = expected_url_normalized in normalized_citation_urls
 
         results.append(
             ExpectedCitationResult(
