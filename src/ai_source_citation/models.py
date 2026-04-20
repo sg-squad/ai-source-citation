@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 from ai_source_citation.citation_health import CitationHealthResult
+from ai_source_citation.llm_judge import LlmJudgeResult
 
 ProviderName = Literal["google"]  # extend later
 
@@ -49,6 +50,7 @@ class CheckResultRow:
     expected_answer: str | None
     answer_text: str
     answer_matched: bool | None
+    llm_judge: LlmJudgeResult | None
     citations: tuple[str, ...]
     citation_domains: tuple[str, ...]
     citation_labels: tuple[str, ...]

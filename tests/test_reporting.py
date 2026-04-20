@@ -189,3 +189,31 @@ def test_html_report_expected_and_missing_urls_are_links():
     assert "renderUrlList(result.expected_urls || [])" in html
     assert "renderUrlList(result.missing_urls || [])" in html
     assert "chip--matched" in html
+
+
+def test_json_report_includes_llm_judge():
+    from ai_source_citation.llm_judge import LlmJudgeResult
+    from ai_source_citation.reporting import build_json_report
+
+    answer = _basic_answer([Citation(url="https://example.com", domain="example.com")])
+
+    row = build_row(
+        answer,
+        [ExpectedCitation(domain="example.com")],
+        expected_answer="95,456,000",
+        llm_judge=LlmJudgeResult(
+            matched=True,
+            confidence=0.92,
+            reasoning="semantic match",
+            provider="openai",
+            model="gpt-test",
+        ),
+    )
+
+    payload = build_json_report([row], provider="google")
+
+    judge = payload["results"][0]["llm_judge"]
+    assert judge is not None
+    assert judge["matched"] is True
+    assert judge["confidence"] == 0.92
+    assert judge["provider"] == "openai"
